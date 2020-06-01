@@ -1,9 +1,18 @@
+/*
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+
+	This program is free software. You can redistribute and/or modify it in
+	accordance with the terms of the accompanying license agreement.
+ */
+
 package feathers.core;
 
 import openfl.display.Shape;
 import feathers.controls.LayoutGroup;
 import massive.munit.Assert;
 
+@:keep
 class ScaleTest {
 	private static final BASE_WIDTH = 100.0;
 	private static final BASE_HEIGHT = 140.0;

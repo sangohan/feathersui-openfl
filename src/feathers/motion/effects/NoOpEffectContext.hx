@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -19,11 +19,21 @@ import openfl.events.EventDispatcher;
 	@since 1.0.0
 **/
 class NoOpEffectContext extends EventDispatcher implements IEffectContext {
+	/**
+		Creates a new `NoOpEffectContext` object from the given arguments.
+
+		@since 1.0.0
+	**/
 	public function new(target:Dynamic) {
 		super();
 		this.target = target;
 	}
 
+	/**
+		The object targeted by the affect.
+
+		@since 1.0.0
+	**/
 	public var target(default, null):Dynamic;
 
 	/**
@@ -47,24 +57,54 @@ class NoOpEffectContext extends EventDispatcher implements IEffectContext {
 		return this.position;
 	}
 
+	/**
+		Plays the effect.
+
+		@since 1.0.0
+	**/
 	public function play():Void {
 		this.toEnd();
 	}
 
+	/**
+		Pauses the effect.
+
+		@since 1.0.0
+	**/
 	public function pause():Void {}
 
+	/**
+		Plays the effect in reverse.
+
+		@since 1.0.0
+	**/
 	public function playReverse():Void {
 		this.toEnd();
 	}
 
+	/**
+		Stops the effect.
+
+		@since 1.0.0
+	**/
 	public function stop():Void {
 		this.toEnd();
 	}
 
+	/**
+		Immediately advances the effect to the end.
+
+		@since 1.0.0
+	**/
 	public function toEnd():Void {
 		FeathersEvent.dispatch(this, Event.COMPLETE);
 	}
 
+	/**
+		Interrupts the effect, if it is playing.
+
+		@since 1.0.0
+	**/
 	public function interrupt():Void {
 		this.toEnd();
 	}

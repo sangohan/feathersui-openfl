@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -8,10 +8,11 @@
 
 package feathers.controls.supportClasses;
 
+import feathers.core.IFocusObject;
 import feathers.core.FeathersControl;
 import feathers.core.InvalidationFlag;
 import feathers.core.IUIControl;
-import feathers.core.IValidating;
+import feathers.controls.IRange;
 import feathers.events.FeathersEvent;
 import feathers.layout.Measurements;
 import openfl.display.DisplayObject;
@@ -30,7 +31,7 @@ import openfl.geom.Point;
 
 	@since 1.0.0
 **/
-class BaseSlider extends FeathersControl {
+class BaseSlider extends FeathersControl implements IRange implements IFocusObject {
 	private function new() {
 		super();
 	}
@@ -39,22 +40,33 @@ class BaseSlider extends FeathersControl {
 		The value of the slider, which must be between the `minimum` and the
 		`maximum`.
 
-		In the following example, the value is changed to `12`:
+		When the `value` property changes, the slider will dispatch an event of
+		type `Event.CHANGE`.
+
+		In the following example, the value is changed to `12.0`:
 
 		```hx
-		slider.minimum = 0;
-		slider.maximum = 100;
-		slider.step = 1;
-		slider.value = 12;
+		slider.minimum = 0.0;
+		slider.maximum = 100.0;
+		slider.step = 1.0;
+		slider.value = 12.0;
 		```
 
-		@default 0
+		@default 0.0
 
 		@see `BaseSlider.minimum`
 		@see `BaseSlider.maximum`
 		@see `BaseSlider.step`
+		@see `openfl.events.Event.CHANGE`
+
+		@since 1.0.0
 	**/
-	public var value(default, set):Float = 0.0;
+	@:isVar
+	public var value(get, set):Float = 0.0;
+
+	private function get_value():Float {
+		return this.value;
+	}
 
 	private function set_value(value:Float):Float {
 		if (this.value == value) {
@@ -62,7 +74,7 @@ class BaseSlider extends FeathersControl {
 		}
 		this.value = value;
 		this.setInvalid(InvalidationFlag.DATA);
-		if (this.liveDragging && !this._dragging) {
+		if (this.liveDragging || !this._dragging) {
 			FeathersEvent.dispatch(this, Event.CHANGE);
 		}
 		return this.value;
@@ -71,21 +83,28 @@ class BaseSlider extends FeathersControl {
 	/**
 		The slider's value cannot be smaller than the minimum.
 
-		In the following example, the minimum is set to `-100`:
+		In the following example, the minimum is set to `-100.0`:
 
-		``` hx
-		slider.minimum = -100;
-		slider.maximum = 100;
-		slider.step = 1;
-		slider.value = 50;</listing>
+		```hx
+		slider.minimum = -100.0;
+		slider.maximum = 100.0;
+		slider.step = 1.0;
+		slider.value = 50.0;
 		```
 
-		@default 0
+		@default 0.0
 
 		@see `BaseSlider.value`
 		@see `BaseSlider.maximum`
+
+		@since 1.0.0
 	**/
-	public var minimum(default, set):Float = 0.0;
+	@:isVar
+	public var minimum(get, set):Float = 0.0;
+
+	private function get_minimum():Float {
+		return this.minimum;
+	}
 
 	private function set_minimum(value:Float):Float {
 		if (this.minimum == value) {
@@ -102,21 +121,28 @@ class BaseSlider extends FeathersControl {
 	/**
 		The slider's value cannot be larger than the maximum.
 
-		In the following example, the maximum is set to `100`:
+		In the following example, the maximum is set to `100.0`:
 
 		```hx
-		slider.minimum = 0;
-		slider.maximum = 100;
-		slider.step = 1;
-		slider.value = 12;
+		slider.minimum = 0.0;
+		slider.maximum = 100.0;
+		slider.step = 1.0;
+		slider.value = 12.0;
 		```
 
-		@default 1
+		@default 1.0
 
 		@see `BaseSlider.value`
 		@see `BaseSlider.minimum`
+
+		@since 1.0.0
 	**/
-	public var maximum(default, set):Float = 1.0;
+	@:isVar
+	public var maximum(get, set):Float = 1.0;
+
+	private function get_maximum():Float {
+		return this.maximum;
+	}
 
 	private function set_maximum(value:Float):Float {
 		if (this.maximum == value) {
@@ -132,24 +158,26 @@ class BaseSlider extends FeathersControl {
 
 	/**
 		As the slider's thumb is dragged, the `value` is snapped to the nearest
-		multiple of `step`. If `step` is `0`, the `value` is not snapped.
+		multiple of `step`. If `step` is `0.0`, the `value` is not snapped.
 
-		In the following example, the step is changed to `1`:
+		In the following example, the step is changed to `1.0`:
 
 		```hx
-		slider.minimum = 0;
-		slider.maximum = 100;
-		slider.step = 1;
-		slider.value = 10;
+		slider.minimum = 0.0;
+		slider.maximum = 100.0;
+		slider.step = 1.0;
+		slider.value = 10.0;
 		```
 
-		@default 0
+		@default 0.0
 
 		@see `BaseSlider.value`
 		@see `BaseSlider.minimum`
 		@see `BaseSlider.maximum`
+
+		@since 1.0.0
 	**/
-	public var step(default, set):Float = 0;
+	public var step(default, set):Float = 0.1;
 
 	private function set_step(value:Float):Float {
 		if (this.step == value) {
@@ -172,222 +200,139 @@ class BaseSlider extends FeathersControl {
 		```
 
 		@default true
+
+		@since 1.0.0
 	**/
 	public var liveDragging(default, default):Bool = true;
 
 	private var thumbContainer:Sprite;
+	private var _currentThumbSkin:DisplayObject = null;
 	private var _thumbSkinMeasurements:Measurements = null;
 
 	/**
-		@see `BaseSlider.trackSkin`
-	**/
-	@style
-	public var thumbSkin(default, set):DisplayObject = null;
+		The skin to use for the slider's thumb.
 
-	private function set_thumbSkin(value:DisplayObject):DisplayObject {
-		if (!this.setStyle("thumbSkin")) {
-			return this.thumbSkin;
-		}
-		if (this.thumbSkin == value) {
-			return this.thumbSkin;
-		}
-		if (this.thumbSkin != null) {
-			if (this.thumbContainer != null) {
-				this.thumbContainer.removeEventListener(MouseEvent.MOUSE_DOWN, thumbSkin_mouseDownHandler);
-				this.thumbContainer.removeChild(this.thumbSkin);
-				this.removeChild(this.thumbContainer);
-				this.thumbContainer = null;
-			} else {
-				this.thumbSkin.removeEventListener(MouseEvent.MOUSE_DOWN, thumbSkin_mouseDownHandler);
-				this.removeChild(this.thumbSkin);
-			}
-		}
-		this.thumbSkin = value;
-		if (this.thumbSkin != null) {
-			if (Std.is(this.thumbSkin, IUIControl)) {
-				cast(this.thumbSkin, IUIControl).initializeNow();
-			}
-			if (this._thumbSkinMeasurements == null) {
-				this._thumbSkinMeasurements = new Measurements(this.thumbSkin);
-			} else {
-				this._thumbSkinMeasurements.save(this.thumbSkin);
-			}
-			if (!Std.is(this.thumbSkin, InteractiveObject)) {
-				// if the skin isn't interactive, we need to add it to something
-				// that is interactive
-				this.thumbContainer = new Sprite();
-				this.thumbContainer.addChild(this.thumbSkin);
-				this.addChild(this.thumbContainer);
-				this.thumbContainer.addEventListener(MouseEvent.MOUSE_DOWN, thumbSkin_mouseDownHandler);
-			} else {
-				// add it above the trackSkin and secondaryTrackSkin
-				this.addChild(this.thumbSkin);
-				this.thumbSkin.addEventListener(MouseEvent.MOUSE_DOWN, thumbSkin_mouseDownHandler);
-			}
-		} else {
-			this._thumbSkinMeasurements = null;
-		}
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.thumbSkin;
-	}
+		In the following example, a thumb skin is passed to the slider:
+
+		```hx
+		var skin = new RectangleSkin();
+		skin.fill = SolidColor(0xcccccc);
+		slider.thumbSkin = skin;
+		```
+
+		@see `BaseSlider.trackSkin`
+
+		@since 1.0.0
+	**/
+	@:style
+	public var thumbSkin:DisplayObject = null;
 
 	private var trackContainer:Sprite;
+	private var _currentTrackSkin:DisplayObject = null;
 	private var _trackSkinMeasurements:Measurements = null;
 
 	/**
+		The skin to use for the slider's track.
+
+		In the following example, a track skin is passed to the slider:
+
+		```hx
+		var skin = new RectangleSkin();
+		skin.fill = SolidColor(0xcccccc);
+		slider.trackSkin = skin;
+		```
+
 		@see `BaseSlider.secondaryTrackSkin`
 		@see `BaseSlider.thumbSkin`
-	**/
-	@style
-	public var trackSkin(default, set):DisplayObject = null;
 
-	private function set_trackSkin(value:DisplayObject):DisplayObject {
-		if (!this.setStyle("trackSkin")) {
-			return this.trackSkin;
-		}
-		if (this.trackSkin == value) {
-			return this.trackSkin;
-		}
-		if (this.trackSkin != null) {
-			if (this.trackContainer != null) {
-				this.trackContainer.removeEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
-				this.trackContainer.removeChild(this.trackSkin);
-				this.removeChild(this.trackContainer);
-				this.trackContainer = null;
-			} else {
-				this.removeChild(this.trackSkin);
-				this.trackSkin.removeEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
-			}
-		}
-		this.trackSkin = value;
-		if (this.trackSkin != null) {
-			if (Std.is(this.trackSkin, IUIControl)) {
-				cast(this.trackSkin, IUIControl).initializeNow();
-			}
-			if (this._trackSkinMeasurements == null) {
-				this._trackSkinMeasurements = new Measurements(this.trackSkin);
-			} else {
-				this._trackSkinMeasurements.save(this.trackSkin);
-			}
-			if (!Std.is(this.trackSkin, InteractiveObject)) {
-				// if the skin isn't interactive, we need to add it to something
-				// that is interactive
-				this.trackContainer = new Sprite();
-				this.trackContainer.addChild(this.trackSkin);
-				this.addChildAt(this.trackContainer, 0);
-				this.trackContainer.addEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
-			} else {
-				// always on the bottom
-				this.addChildAt(this.trackSkin, 0);
-				this.trackSkin.addEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
-			}
-		} else {
-			this._trackSkinMeasurements = null;
-		}
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.trackSkin;
-	}
+		@since 1.0.0
+	**/
+	@:style
+	public var trackSkin:DisplayObject = null;
 
 	private var secondaryTrackContainer:Sprite;
+	private var _currentSecondaryTrackSkin:DisplayObject = null;
 	private var _secondaryTrackSkinMeasurements:Measurements = null;
 
 	/**
+		The skin to use for the slider's optional secondary track. If a slider
+		has one track, it will fill the entire length of the slider. If a slider
+		has a track and a secondary track, the primary track will stretch
+		between the minimum edge of the slider and the location of the slider's
+		thumb, while the secondary track will stretch from the location of the
+		slider's thumb to the maximum edge of the slider.
+
+		In the following example, a track skin and a secondary track skin are
+		passed to the slider:
+
+		```hx
+		var skin = new RectangleSkin();
+		skin.fill = SolidColor(0xaaaaaa);
+		slider.trackSkin = skin;
+
+		var skin = new RectangleSkin();
+		skin.fill = SolidColor(0xcccccc);
+		slider.secondaryTrackSkin = skin;
+		```
+
 		@see `BaseSlider.trackSkin`
+
+		@since 1.0.0
 	**/
-	@style
-	public var secondaryTrackSkin(default, set):DisplayObject = null;
-
-	private function set_secondaryTrackSkin(value:DisplayObject):DisplayObject {
-		if (!this.setStyle("secondaryTrackSkin")) {
-			return this.secondaryTrackSkin;
-		}
-		if (this.secondaryTrackSkin == value) {
-			return this.secondaryTrackSkin;
-		}
-		if (this.secondaryTrackSkin != null) {
-			if (this.secondaryTrackContainer != null) {
-				this.secondaryTrackContainer.removeEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
-				this.secondaryTrackContainer.removeChild(this.secondaryTrackSkin);
-				this.removeChild(this.secondaryTrackContainer);
-				this.secondaryTrackContainer = null;
-			} else {
-				this.removeChild(this.secondaryTrackSkin);
-				this.secondaryTrackSkin.removeEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
-			}
-		}
-		this.secondaryTrackSkin = value;
-		if (this.secondaryTrackSkin != null) {
-			if (Std.is(this.secondaryTrackSkin, IUIControl)) {
-				cast(this.secondaryTrackSkin, IUIControl).initializeNow();
-			}
-			if (this._secondaryTrackSkinMeasurements == null) {
-				this._secondaryTrackSkinMeasurements = new Measurements(this.secondaryTrackSkin);
-			} else {
-				this._secondaryTrackSkinMeasurements.save(this.secondaryTrackSkin);
-			}
-
-			// on the bottom or above the trackSkin
-			var index = this.trackSkin != null ? 1 : 0;
-
-			if (!Std.is(this.secondaryTrackSkin, InteractiveObject)) {
-				// if the skin isn't interactive, we need to add it to something
-				// that is interactive
-				this.secondaryTrackContainer = new Sprite();
-				this.secondaryTrackContainer.addChild(this.secondaryTrackSkin);
-				this.addChildAt(this.secondaryTrackContainer, index);
-				this.secondaryTrackContainer.addEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
-			} else {
-				this.addChildAt(this.secondaryTrackSkin, index);
-				this.secondaryTrackSkin.addEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
-			}
-		} else {
-			this._secondaryTrackSkinMeasurements = null;
-		}
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.secondaryTrackSkin;
-	}
+	@:style
+	public var secondaryTrackSkin:DisplayObject = null;
 
 	/**
+		The space, measured in pixels, between the minimum position of the thumb
+		and the the minimum edge of the track. May be negative to optionally
+		extend the draggable range of the thumb beyond the track's bounds.
+
+		In the following example, minimum padding is set to 20 pixels:
+
+		```hx
+		slider.minimumPadding = 20.0;
+		```
+
 		@see `BaseSlider.maximumPadding`
-	**/
-	@style
-	public var minimumPadding(default, set):Null<Float> = null;
 
-	private function set_minimumPadding(value:Null<Float>):Null<Float> {
-		if (!this.setStyle("minimumPadding")) {
-			return this.minimumPadding;
-		}
-		if (this.minimumPadding == value) {
-			return this.minimumPadding;
-		}
-		this.minimumPadding = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.minimumPadding;
-	}
+		@since 1.0.0
+	**/
+	@:style
+	public var minimumPadding:Float = 0.0;
 
 	/**
-		@see `BaseSlider.minimumPadding`
-	**/
-	@style
-	public var maximumPadding(default, set):Null<Float> = null;
+		The space, measured in pixels, between the maximum position of the thumb
+		and the the maximum edge of the track. May be negative to optionally
+		extend the draggable range of the thumb beyond the track's bounds.
 
-	private function set_maximumPadding(value:Null<Float>):Null<Float> {
-		if (!this.setStyle("maximumPadding")) {
-			return this.maximumPadding;
-		}
-		if (this.maximumPadding == value) {
-			return this.minimumPadding;
-		}
-		this.maximumPadding = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.maximumPadding;
-	}
+		In the following example, maximum padding is set to 20 pixels:
+
+		```hx
+		slider.maximumPadding = 20.0;
+		```
+
+		@see `BaseSlider.minimumPadding`
+
+		@since 1.0.0
+	**/
+	@:style
+	public var maximumPadding:Float = 0.0;
 
 	private var _dragging:Bool = false;
-	private var _pointerStartX:Float = 0;
-	private var _pointerStartY:Float = 0;
-	private var _thumbStartX:Float = 0;
-	private var _thumbStartY:Float = 0;
+	private var _pointerStartX:Float = 0.0;
+	private var _pointerStartY:Float = 0.0;
+	private var _thumbStartX:Float = 0.0;
+	private var _thumbStartY:Float = 0.0;
+
+	override public function showFocus(show:Bool):Void {
+		super.showFocus(show);
+		if (Std.is(this.thumbSkin, IFocusObject)) {
+			var focusThumb = cast(this.thumbSkin, IFocusObject);
+			if (focusThumb.focusEnabled) {
+				focusThumb.showFocus(show);
+			}
+		}
+	}
 
 	override private function initialize():Void {
 		super.initialize();
@@ -403,17 +348,155 @@ class BaseSlider extends FeathersControl {
 		var stateInvalid = this.isInvalid(InvalidationFlag.STATE);
 		var stylesInvalid = this.isInvalid(InvalidationFlag.STYLES);
 
+		if (stylesInvalid) {
+			this.refreshThumb();
+			this.refreshTrack();
+			this.refreshSecondaryTrack();
+		}
+
 		if (stateInvalid) {
 			this.refreshEnabled();
 		}
 
-		sizeInvalid = this.autoSizeIfNeeded() || sizeInvalid;
+		sizeInvalid = this.measure() || sizeInvalid;
 
 		this.layoutContent();
 	}
 
-	private function autoSizeIfNeeded():Bool {
-		throw new TypeError("Missing override for 'autoSizeIfNeeded' in type " + Type.getClassName(Type.getClass(this)));
+	private function measure():Bool {
+		throw new TypeError("Missing override for 'measure' in type " + Type.getClassName(Type.getClass(this)));
+	}
+
+	private function refreshThumb():Void {
+		var oldSkin = this._currentThumbSkin;
+		this._currentThumbSkin = this.thumbSkin;
+		if (this._currentThumbSkin == oldSkin) {
+			return;
+		}
+		if (oldSkin != null) {
+			if (this.thumbContainer != null) {
+				this.thumbContainer.removeEventListener(MouseEvent.MOUSE_DOWN, thumbSkin_mouseDownHandler);
+				this.thumbContainer.removeChild(oldSkin);
+				this.removeChild(this.thumbContainer);
+				this.thumbContainer = null;
+			} else {
+				oldSkin.removeEventListener(MouseEvent.MOUSE_DOWN, thumbSkin_mouseDownHandler);
+				this.removeChild(oldSkin);
+			}
+		}
+		if (this._currentThumbSkin != null) {
+			if (Std.is(this._currentThumbSkin, IUIControl)) {
+				cast(this._currentThumbSkin, IUIControl).initializeNow();
+			}
+			if (this._thumbSkinMeasurements == null) {
+				this._thumbSkinMeasurements = new Measurements(this._currentThumbSkin);
+			} else {
+				this._thumbSkinMeasurements.save(this._currentThumbSkin);
+			}
+			if (!Std.is(this._currentThumbSkin, InteractiveObject)) {
+				// if the skin isn't interactive, we need to add it to something
+				// that is interactive
+				this.thumbContainer = new Sprite();
+				this.thumbContainer.addChild(this._currentThumbSkin);
+				this.addChild(this.thumbContainer);
+				this.thumbContainer.addEventListener(MouseEvent.MOUSE_DOWN, thumbSkin_mouseDownHandler);
+			} else {
+				// add it above the trackSkin and secondaryTrackSkin
+				this.addChild(this._currentThumbSkin);
+				this.thumbSkin.addEventListener(MouseEvent.MOUSE_DOWN, thumbSkin_mouseDownHandler);
+			}
+		} else {
+			this._thumbSkinMeasurements = null;
+		}
+	}
+
+	private function refreshTrack():Void {
+		var oldSkin = this._currentTrackSkin;
+		this._currentTrackSkin = this.trackSkin;
+		if (this._currentTrackSkin == oldSkin) {
+			return;
+		}
+		if (oldSkin != null) {
+			if (this.trackContainer != null) {
+				this.trackContainer.removeEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
+				this.trackContainer.removeChild(oldSkin);
+				this.removeChild(this.trackContainer);
+				this.trackContainer = null;
+			} else {
+				this.removeChild(oldSkin);
+				oldSkin.removeEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
+			}
+		}
+		if (this._currentTrackSkin != null) {
+			if (Std.is(this._currentTrackSkin, IUIControl)) {
+				cast(this._currentTrackSkin, IUIControl).initializeNow();
+			}
+			if (this._trackSkinMeasurements == null) {
+				this._trackSkinMeasurements = new Measurements(this._currentTrackSkin);
+			} else {
+				this._trackSkinMeasurements.save(this._currentTrackSkin);
+			}
+			if (!Std.is(this._currentTrackSkin, InteractiveObject)) {
+				// if the skin isn't interactive, we need to add it to something
+				// that is interactive
+				this.trackContainer = new Sprite();
+				this.trackContainer.addChild(this._currentTrackSkin);
+				this.addChildAt(this.trackContainer, 0);
+				this.trackContainer.addEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
+			} else {
+				// always on the bottom
+				this.addChildAt(this._currentTrackSkin, 0);
+				this.trackSkin.addEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
+			}
+		} else {
+			this._trackSkinMeasurements = null;
+		}
+	}
+
+	private function refreshSecondaryTrack():Void {
+		var oldSkin = this._currentSecondaryTrackSkin;
+		this._currentSecondaryTrackSkin = this.secondaryTrackSkin;
+		if (this._currentSecondaryTrackSkin == oldSkin) {
+			return;
+		}
+		if (oldSkin != null) {
+			if (this.secondaryTrackContainer != null) {
+				this.secondaryTrackContainer.removeEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
+				this.secondaryTrackContainer.removeChild(oldSkin);
+				this.removeChild(this.secondaryTrackContainer);
+				this.secondaryTrackContainer = null;
+			} else {
+				this.removeChild(oldSkin);
+				oldSkin.removeEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
+			}
+		}
+		if (this._currentSecondaryTrackSkin != null) {
+			if (Std.is(this._currentSecondaryTrackSkin, IUIControl)) {
+				cast(this._currentSecondaryTrackSkin, IUIControl).initializeNow();
+			}
+			if (this._secondaryTrackSkinMeasurements == null) {
+				this._secondaryTrackSkinMeasurements = new Measurements(this._currentSecondaryTrackSkin);
+			} else {
+				this._secondaryTrackSkinMeasurements.save(this._currentSecondaryTrackSkin);
+			}
+
+			// on the bottom or above the trackSkin
+			var index = this._currentTrackSkin != null ? 1 : 0;
+
+			if (!Std.is(this._currentSecondaryTrackSkin, InteractiveObject)) {
+				// if the skin isn't interactive, we need to add it to something
+				// that is interactive
+				this.secondaryTrackContainer = new Sprite();
+				this.secondaryTrackContainer.addChild(this._currentSecondaryTrackSkin);
+				this.addChildAt(this.secondaryTrackContainer, index);
+				this.secondaryTrackContainer.addEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
+			} else {
+				this.addChildAt(this._currentSecondaryTrackSkin, index);
+				this._currentSecondaryTrackSkin.addEventListener(MouseEvent.MOUSE_DOWN, trackSkin_mouseDownHandler);
+			}
+		} else {
+			this._secondaryTrackSkinMeasurements = null;
+		}
 	}
 
 	private function refreshEnabled():Void {
@@ -478,7 +561,7 @@ class BaseSlider extends FeathersControl {
 		this.stage.addEventListener(MouseEvent.MOUSE_MOVE, thumbSkin_stage_mouseMoveHandler, false, 0, true);
 		this.stage.addEventListener(MouseEvent.MOUSE_UP, thumbSkin_stage_mouseUpHandler, false, 0, true);
 
-		var location:Point = new Point(event.stageX, event.stageY);
+		var location = new Point(event.stageX, event.stageY);
 		location = this.globalToLocal(location);
 
 		this._thumbStartX = this.thumbSkin.x;
@@ -489,7 +572,7 @@ class BaseSlider extends FeathersControl {
 	}
 
 	private function thumbSkin_stage_mouseMoveHandler(event:MouseEvent):Void {
-		var location:Point = new Point(event.stageX, event.stageY);
+		var location = new Point(event.stageX, event.stageY);
 		location = this.globalToLocal(location);
 		this.value = this.locationToValue(location.x, location.y);
 	}
@@ -518,7 +601,7 @@ class BaseSlider extends FeathersControl {
 	}
 
 	private function trackSkin_stage_mouseMoveHandler(event:MouseEvent):Void {
-		var location:Point = new Point(event.stageX, event.stageY);
+		var location = new Point(event.stageX, event.stageY);
 		location = this.globalToLocal(location);
 
 		this.value = this.locationToValue(location.x, location.y);

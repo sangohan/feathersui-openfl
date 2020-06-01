@@ -1,0 +1,84 @@
+name: Haxe CI
+
+on: [push]
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
+    - uses: haxeui/haxeui-core/.github/actions/haxe@master
+      with:
+        haxe-version: 4.0.5
+    - name: Set up Haxe
+      run: |
+        mkdir $GITHUB_WORKSPACE/.haxelib
+        haxelib setup $GITHUB_WORKSPACE/.haxelib
+    - name: Set up Haxelib dependencies
+      run: |
+        haxelib install lime --quiet
+        haxelib install openfl --quiet
+        haxelib install actuate --quiet
+        haxelib install dox --quiet
+        haxelib dev feathersui $GITHUB_WORKSPACE --quiet
+    - name: Build .swc file
+      run: haxelib run openfl build flash
+    - name: Build API documentation
+      working-directory: docs
+      run: haxe docs.hxml
+    - name: Build samples/hello-world
+      working-directory: samples/hello-world
+      run: |
+        haxelib run openfl build neko
+        haxelib run openfl build html5
+        haxelib run openfl build flash
+    - name: Build samples/calculator
+      working-directory: samples/calculator
+      run: |
+        haxelib run openfl build neko
+        haxelib run openfl build html5
+        haxelib run openfl build flash
+    - name: Build samples/components-explorer
+      working-directory: samples/components-explorer
+      run: |
+        haxelib run openfl build neko
+        haxelib run openfl build html5
+        haxelib run openfl build flash
+    - name: Build samples/custom-theme
+      working-directory: samples/custom-theme
+      run: |
+        haxelib run openfl build neko
+        haxelib run openfl build html5
+        haxelib run openfl build flash
+    - name: Build samples/horizontal-layout-percentage-sizing
+      working-directory: samples/horizontal-layout-percentage-sizing
+      run: |
+        haxelib run openfl build neko
+        haxelib run openfl build html5
+        haxelib run openfl build flash
+    - name: Build samples/list-view-data-provider-collection-sorting
+      working-directory: samples/list-view-data-provider-collection-sorting
+      run: |
+        haxelib run openfl build neko
+        haxelib run openfl build html5
+        haxelib run openfl build flash
+    - name: Build samples/login-form
+      working-directory: samples/login-form
+      run: |
+        haxelib run openfl build neko
+        haxelib run openfl build html5
+        haxelib run openfl build flash
+    - name: Build samples/stack-navigator-pass-data-between-views
+      working-directory: samples/stack-navigator-pass-data-between-views
+      run: |
+        haxelib run openfl build neko
+        haxelib run openfl build html5
+        haxelib run openfl build flash
+    - name: Build samples/tab-navigator
+      working-directory: samples/tab-navigator
+      run: |
+        haxelib run openfl build neko
+        haxelib run openfl build html5
+        haxelib run openfl build flash

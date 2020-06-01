@@ -1,3 +1,11 @@
+/*
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+
+	This program is free software. You can redistribute and/or modify it in
+	accordance with the terms of the accompanying license agreement.
+ */
+
 package feathers.core;
 
 import feathers.controls.ButtonState;
@@ -5,6 +13,7 @@ import openfl.display.Sprite;
 import feathers.controls.BasicButton;
 import massive.munit.Assert;
 
+@:keep
 @:access(feathers.core.FeathersControl)
 class RestrictedStyleTest {
 	private var _control:BasicButton;

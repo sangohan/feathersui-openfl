@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -10,54 +10,58 @@ package feathers.controls;
 
 import feathers.controls.supportClasses.BaseScrollContainer;
 import feathers.controls.supportClasses.LayoutViewPort;
-import feathers.core.FeathersControl;
+import feathers.core.IFocusContainer;
 import feathers.core.InvalidationFlag;
-import feathers.core.IStateContext;
-import feathers.core.IStateObserver;
-import feathers.core.IUIControl;
-import feathers.core.IValidating;
 import feathers.events.FeathersEvent;
+import feathers.layout.Direction;
 import feathers.layout.ILayout;
 import feathers.layout.ILayoutObject;
-import feathers.layout.Measurements;
-import feathers.style.IStyleObject;
-import feathers.utils.Scroller;
+import feathers.layout.IScrollLayout;
+import feathers.themes.steel.components.SteelScrollContainerStyles;
 import openfl.display.DisplayObject;
 import openfl.events.Event;
-import openfl.geom.Rectangle;
 
 /**
 	A generic container that supports layout, scrolling, and a background skin.
-	For a lighter weight container without scrolling, see `LayoutGroup`.
 
 	The following example creates a scroll container with a horizontal layout
 	and adds two buttons to it:
 
 	```hx
-	var container:ScrollContainer = new ScrollContainer();
-	var layout:HorizontalLayout = new HorizontalLayout();
-	layout.gap = 20;
-	layout.padding = 20;
+	var container = new ScrollContainer();
+	var layout = new HorizontalLayout();
+	layout.gap = 20.0;
+	layout.padding = 20.0;
 	container.layout = layout;
-	this.addChild( container );
+	this.addChild(container);
 
-	var yesButton:Button = new Button();
-	yesButton.label = "Yes";
-	container.addChild( yesButton );
+	var yesButton = new Button();
+	yesButton.text = "Yes";
+	container.addChild(yesButton);
 
-	var noButton:Button = new Button();
-	noButton.label = "No";
-	container.addChild( noButton );
+	var noButton = new Button();
+	noButton.text = "No";
+	container.addChild(noButton);
 	```
 
-	@see [How to use the Feathers ScrollContainer component](../../../help/scroll-container.html)
-	@see `feathers.controls.LayoutGroup`
+	@see [Tutorial: How to use the ScrollContainer component](https://feathersui.com/learn/haxe-openfl/scroll-container/)
+	@see `feathers.controls.LayoutGroup` is a lighter weight layout container without scrolling
 
 	@since 1.0.0
 **/
-class ScrollContainer extends BaseScrollContainer {
+@defaultXmlProperty("xmlContent")
+@:styleContext
+class ScrollContainer extends BaseScrollContainer implements IFocusContainer {
+	/**
+		Creates a new `ScrollContainer` object.
+
+		@since 1.0.0
+	**/
 	public function new() {
+		initializeScrollContainerTheme();
+
 		super();
+
 		if (this.viewPort == null) {
 			this.layoutViewPort = new LayoutViewPort();
 			this.addRawChild(this.layoutViewPort);
@@ -65,32 +69,79 @@ class ScrollContainer extends BaseScrollContainer {
 		}
 	}
 
-	override private function get_styleContext():Class<IStyleObject> {
-		return ScrollContainer;
+	private var layoutViewPort:LayoutViewPort;
+
+	override private function get_primaryDirection():Direction {
+		if (Std.is(this.layout, IScrollLayout)) {
+			return cast(this.layout, IScrollLayout).primaryDirection;
+		}
+		return Direction.NONE;
 	}
 
-	private var layoutViewPort:LayoutViewPort;
 	private var _ignoreChildChanges:Bool = false;
 	private var _ignoreChildChangesButSetFlags:Bool = false;
 	private var _displayListBypassEnabled = true;
+
 	private var items:Array<DisplayObject> = [];
 
-	@style
-	public var layout(default, set):ILayout = null;
+	/**
+		The layout algorithm used to position and size the group's items.
 
-	private function set_layout(value:ILayout):ILayout {
-		if (!this.setStyle("layout")) {
-			return this.layout;
+		The following example tells the group to use a vertical layout:
+
+		```hx
+		var layout = new VerticalLayout();
+		layout.gap = 20.0;
+		layout.padding = 20.0;
+		layout.horizontalAlign = CENTER;
+		container.layout = layout;
+		```
+
+		@since 1.0.0
+	**/
+	@:style
+	public var layout:ILayout = null;
+
+	@:dox(hide)
+	@:noCompletion
+	public var xmlContent(default, set):Array<DisplayObject> = null;
+
+	private function set_xmlContent(value:Array<DisplayObject>):Array<DisplayObject> {
+		if (this.xmlContent == value) {
+			return this.xmlContent;
 		}
-		if (this.layout == value) {
-			return this.layout;
+		if (this.xmlContent != null) {
+			for (child in this.xmlContent) {
+				this.removeChild(child);
+			}
 		}
-		this.layout = value;
-		this.setInvalid(InvalidationFlag.LAYOUT);
-		return this.layout;
+		this.xmlContent = value;
+		if (this.xmlContent != null) {
+			for (child in this.xmlContent) {
+				this.addChild(child);
+			}
+		}
+		this.setInvalid(InvalidationFlag.STYLES);
+		return this.xmlContent;
 	}
 
-	override private function get_numChildren():Int {
+	/**
+		@see `feathers.core.IFocusContainer.childFocusEnabled`
+	**/
+	@:isVar
+	public var childFocusEnabled(get, set):Bool = true;
+
+	private function get_childFocusEnabled():Bool {
+		return this.enabled && this.childFocusEnabled;
+	}
+
+	private function set_childFocusEnabled(value:Bool):Bool {
+		this.childFocusEnabled = value;
+		return this.childFocusEnabled;
+	}
+
+	@:getter(numChildren)
+	#if !flash override #end private function get_numChildren():Int {
 		if (!this._displayListBypassEnabled) {
 			return super.numChildren;
 		}
@@ -119,8 +170,10 @@ class ScrollContainer extends BaseScrollContainer {
 		if (oldIndex >= 0) {
 			this.items.remove(child);
 		}
-		var result = this.layoutViewPort.addChildAt(child, index);
+		// insert into the array first, so that display list APIs work in an
+		// Event.ADDED listener
 		this.items.insert(index, child);
+		var result = this.layoutViewPort.addChildAt(child, index);
 		this.setInvalid(InvalidationFlag.LAYOUT);
 		return result;
 	}
@@ -154,6 +207,13 @@ class ScrollContainer extends BaseScrollContainer {
 			return super.removeChildAt(index);
 		}
 		return this.layoutViewPort.getChildAt(index);
+	}
+
+	override public function getChildIndex(child:DisplayObject):Int {
+		if (!this._displayListBypassEnabled) {
+			return super.getChildIndex(child);
+		}
+		return this.items.indexOf(child);
 	}
 
 	override public function setChildIndex(child:DisplayObject, index:Int):Void {
@@ -212,6 +272,14 @@ class ScrollContainer extends BaseScrollContainer {
 		return result;
 	}
 
+	private function getRawChildIndex(child:DisplayObject):Int {
+		var oldBypass = this._displayListBypassEnabled;
+		this._displayListBypassEnabled = false;
+		var result = this.getChildIndex(child);
+		this._displayListBypassEnabled = oldBypass;
+		return result;
+	}
+
 	private function setRawChildIndex(child:DisplayObject, index:Int):Void {
 		var oldBypass = this._displayListBypassEnabled;
 		this._displayListBypassEnabled = false;
@@ -219,15 +287,19 @@ class ScrollContainer extends BaseScrollContainer {
 		this._displayListBypassEnabled = oldBypass;
 	}
 
+	private function initializeScrollContainerTheme():Void {
+		SteelScrollContainerStyles.initialize();
+	}
+
 	override private function update():Void {
 		// children are allowed to change during update() in a subclass up
 		// until it calls super.update().
 		this._ignoreChildChangesButSetFlags = false;
 
-		var sizeInvalid = this.isInvalid(InvalidationFlag.SIZE);
 		var layoutInvalid = this.isInvalid(InvalidationFlag.LAYOUT);
+		var stylesInvalid = this.isInvalid(InvalidationFlag.STYLES);
 
-		if (layoutInvalid) {
+		if (layoutInvalid || stylesInvalid) {
 			this.layoutViewPort.layout = this.layout;
 		}
 

@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -11,7 +11,7 @@ package feathers.motion.effects.actuate;
 import motion.easing.Linear;
 
 /**
-	A Feathers effect context that uses the
+	A Feathers UI effect context that uses the
 	[Actuate](https://lib.haxe.org/p/actuate/) library.
 
 	To create actuators for use with `ActuateEffectContext`, use the static
@@ -34,12 +34,17 @@ import motion.easing.Linear;
 	@see `feathers.motion.effects.actuate.ActuateForEffects`
 	@see [Actuate on Haxelib](https://lib.haxe.org/p/actuate/)
 	@see [@jgranick/actuate on Github](https://github.com/jgranick/actuate)
-	@see [Effects and animation for Feathers components](../../../help/effects.html)
+	@see [Effects and animation for Feathers UI components](https://feathersui.com/learn/haxe-openfl/effects-and-animation/)
 
 	@since 1.0.0
 **/
 class ActuateEffectContext extends BaseEffectContext {
-	public function new(target:Dynamic, actuator:IReadableGenericActuator, interruptBehavior:EffectInterruptBehavior = EffectInterruptBehavior.END) {
+	/**
+		Creates a new `ActuateEffectContext` object from the given arguments.
+
+		@since 1.0.0
+	**/
+	public function new(target:Dynamic, actuator:IReadableGenericActuator, interruptBehavior:EffectInterruptBehavior = END) {
 		this.actuator = actuator;
 		this.interruptBehavior = interruptBehavior;
 
@@ -78,7 +83,7 @@ class ActuateEffectContext extends BaseEffectContext {
 
 		@see `feathers.motion.EffectInterruptBehavior.END`
 		@see `feathers.motion.EffectInterruptBehavior.STOP`
-		@see `interrupt()`
+		@see `ActuateEffectContext.interrupt`
 
 		@since 1.0.0
 	**/
@@ -88,7 +93,7 @@ class ActuateEffectContext extends BaseEffectContext {
 	private var _onCompleteParams:Array<Dynamic>;
 
 	override public function interrupt():Void {
-		if (this.interruptBehavior == EffectInterruptBehavior.STOP) {
+		if (this.interruptBehavior == STOP) {
 			this.stop();
 			return;
 		}

@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -17,69 +17,13 @@ import openfl.display.DisplayObject;
 	@since 1.0.0
 **/
 class Measurements {
-	public function new(target:DisplayObject = null) {
-		this.save(target);
-	}
-
 	/**
-		With the saved measurements, and a parent's measurements, resets the
-		dimensions of the target display object.
+		Creates a new `Measurements` object from the given arguments.
 
 		@since 1.0.0
 	**/
-	public function resetTargetFluidlyForParent(target:DisplayObject, parent:IMeasureObject):Void {
-		if (target == null) {
-			return;
-		}
-		if (parent.explicitWidth == null) {
-			target.width = this.width;
-		} else {
-			target.width = parent.explicitWidth;
-		}
-		if (parent.explicitHeight == null) {
-			target.height = this.height;
-		} else {
-			target.height = parent.explicitHeight;
-		}
-		if (Std.is(target, IMeasureObject)) {
-			var measureTarget = cast(target, IMeasureObject);
-
-			var minWidth = parent.explicitMinWidth;
-			if (minWidth == null || measureTarget.explicitMinWidth > minWidth) {
-				minWidth = measureTarget.explicitMinWidth;
-			}
-			if (minWidth == null) {
-				minWidth = 0.0;
-			}
-			measureTarget.minWidth = minWidth;
-
-			var minHeight = parent.explicitMinHeight;
-			if (minHeight == null || measureTarget.explicitMinHeight > minHeight) {
-				minHeight = measureTarget.explicitMinHeight;
-			}
-			if (minHeight == null) {
-				minHeight = 0.0;
-			}
-			measureTarget.minHeight = minHeight;
-
-			var maxWidth = parent.explicitMaxWidth;
-			if (maxWidth == null || measureTarget.explicitMaxWidth < maxWidth) {
-				maxWidth = measureTarget.explicitMaxWidth;
-			}
-			if (maxWidth == null) {
-				maxWidth = Math.POSITIVE_INFINITY;
-			}
-			measureTarget.maxWidth = maxWidth;
-
-			var maxHeight = parent.explicitMaxHeight;
-			if (maxHeight == null || measureTarget.explicitMaxHeight < maxHeight) {
-				maxHeight = measureTarget.explicitMaxHeight;
-			}
-			if (maxHeight == null) {
-				maxHeight = Math.POSITIVE_INFINITY;
-			}
-			measureTarget.maxHeight = maxHeight;
-		}
+	public function new(target:DisplayObject = null) {
+		this.save(target);
 	}
 
 	/**
@@ -124,18 +68,44 @@ class Measurements {
 	public function restore(target:DisplayObject):Void {
 		if (Std.is(target, IMeasureObject)) {
 			var measureTarget = cast(target, IMeasureObject);
-			measureTarget.explicitWidth = this.width;
-			measureTarget.explicitHeight = this.height;
-			measureTarget.explicitMinWidth = this.minWidth;
-			measureTarget.explicitMinHeight = this.minHeight;
-
-			// TODO: re-enable this code
-			// measureTarget.maxWidth = this.maxWidth;
-			// measureTarget.maxHeight = this.maxHeight;
+			if (this.width == null) {
+				measureTarget.resetWidth();
+			} else {
+				measureTarget.width = this.width;
+			}
+			if (this.height == null) {
+				measureTarget.resetHeight();
+			} else {
+				measureTarget.height = this.height;
+			}
+			if (this.minWidth == null) {
+				measureTarget.resetMinWidth();
+			} else {
+				measureTarget.minWidth = this.minWidth;
+			}
+			if (this.minHeight == null) {
+				measureTarget.resetMinHeight();
+			} else {
+				measureTarget.minHeight = this.minHeight;
+			}
+			if (this.maxWidth == null) {
+				measureTarget.resetMaxWidth();
+			} else {
+				measureTarget.maxWidth = this.maxWidth;
+			}
+			if (this.maxHeight == null) {
+				measureTarget.resetMaxHeight();
+			} else {
+				measureTarget.maxHeight = this.maxHeight;
+			}
 			return;
 		}
-		target.width = this.width;
-		target.height = this.height;
+		if (this.width != null) {
+			target.width = this.width;
+		}
+		if (this.height != null) {
+			target.height = this.height;
+		}
 	}
 
 	/**

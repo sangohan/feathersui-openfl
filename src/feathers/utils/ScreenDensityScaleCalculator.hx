@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -15,11 +15,16 @@ import openfl.errors.ArgumentError;
 	Selects a scale value for the application based on the screen density
 	(sometimes density is called DPI or PPI).
 
-	@see `openfl.system.Capabilities.screenDPI`
+	@see [`openfl.system.Capabilities.screenDPI`](https://api.openfl.org/openfl/system/Capabilities.html#screenDPI)
 
 	@since 1.0.0
 **/
 class ScreenDensityScaleCalculator {
+	/**
+		Creates a new `ScreenDensityScaleCalculator` object.
+
+		@since 1.0.0
+	**/
 	public function new() {}
 
 	private var _buckets:Array<ScreenDensityBucket> = [];
@@ -28,10 +33,10 @@ class ScreenDensityScaleCalculator {
 		Adds a new scale for the specified screen density.
 
 		```hx
-		calculator.addScaleForDensity( 160, 1 );
-		calculator.addScaleForDensity( 240, 1.5 );
-		calculator.addScaleForDensity( 320, 2 );
-		calculator.addScaleForDensity( 480, 3 );
+		calculator.addScaleForDensity(160, 1);
+		calculator.addScaleForDensity(240, 1.5);
+		calculator.addScaleForDensity(320, 2);
+		calculator.addScaleForDensity(480, 3);
 		```
 	**/
 	public function addScaleForDensity(density:Float, scale:Float):Void {
@@ -51,8 +56,8 @@ class ScreenDensityScaleCalculator {
 		Removes an application scale that was added with `addScaleForDensity()`.
 
 		```hx
-		selector.addScaleForDensity( 320, 2 );
-		selector.removeScaleForDensity( 320 );
+		selector.addScaleForDensity(320, 2);
+		selector.removeScaleForDensity(320);
 		```
 
 		@see `ScreenDensityScaleCalculator.addScaleForDensity()`

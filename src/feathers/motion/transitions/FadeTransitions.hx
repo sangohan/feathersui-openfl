@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -22,7 +22,7 @@ import feathers.motion.effects.IEffectContext;
 	one or both views in transition. Animates the `alpha` property of a display
 	object to make it fade in or out.
 
-	@see [Transitions for Feathers navigators](../../../help/transitions.html)
+	@see [Transitions for Feathers UI navigators](https://feathersui.com/learn/haxe-openfl/navigator-transitions/)
 
 	@since 1.0.0
 **/
@@ -38,7 +38,7 @@ class FadeTransitions {
 		@since 1.0.0
 	**/
 	public static function crossFade(duration:Float = 0.5, ?ease:IEasing,
-			?interruptBehavior:EffectInterruptBehavior):DisplayObject->DisplayObject->IEffectContext {
+			?interruptBehavior:EffectInterruptBehavior):(DisplayObject, DisplayObject) -> IEffectContext {
 		return function(oldView:DisplayObject, newView:DisplayObject):IEffectContext {
 			if (oldView == null && newView == null) {
 				throw new ArgumentError(VIEW_REQUIRED_ERROR);

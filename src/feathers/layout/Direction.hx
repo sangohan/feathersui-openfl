@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -16,26 +16,25 @@ package feathers.layout;
 
 	@since 1.0.0
 **/
-@:enum
-abstract Direction(String) {
+enum Direction {
 	/**
 		The object will be oriented vertically.
 
 		@since 1.0.0
 	**/
-	var VERTICAL = "vertical";
+	VERTICAL;
 
 	/**
 		The object will be oriented horizontally.
 
 		@since 1.0.0
 	**/
-	var HORIZONTAL = "horizontal";
+	HORIZONTAL;
 
 	/**
 		The object will be oriented in no particular direction.
 
 		@since 1.0.0
 	**/
-	var NONE = "none";
+	NONE;
 }

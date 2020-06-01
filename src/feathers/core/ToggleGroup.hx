@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -26,7 +26,12 @@ import openfl.events.EventDispatcher;
 
 	@since 1.0.0
 **/
-class ToggleGroup extends EventDispatcher {
+class ToggleGroup extends EventDispatcher implements IIndexSelector implements IDataSelector<IToggle> {
+	/**
+		Creates a new `ToggleGroup` object.
+
+		@since 1.0.0
+	**/
 	public function new() {
 		super();
 	}
@@ -49,6 +54,9 @@ class ToggleGroup extends EventDispatcher {
 	/**
 		The index of the currently selected toggle.
 
+		When the value of the `selectedIndex` property changes, the component
+		will dispatch an event of type `Event.CHANGE`.
+
 		In the following example, the selected index is changed:
 
 		```hx
@@ -57,9 +65,16 @@ class ToggleGroup extends EventDispatcher {
 
 		@default -1
 
+		@see `openfl.events.Event.CHANGE`
+
 		@since 1.0.0
 	**/
-	public var selectedIndex(default, set):Int = -1;
+	@:isVar
+	public var selectedIndex(get, set):Int = -1;
+
+	private function get_selectedIndex():Int {
+		return this.selectedIndex;
+	}
 
 	private function set_selectedIndex(value:Int):Int {
 		var itemCount = this._items.length;
@@ -90,7 +105,19 @@ class ToggleGroup extends EventDispatcher {
 	}
 
 	/**
+		@see `feathers.core.IIndexSelector.maxSelectedIndex`
+	**/
+	public var maxSelectedIndex(get, never):Int;
+
+	private function get_maxSelectedIndex():Int {
+		return this._items.length - 1;
+	}
+
+	/**
 		The currently selected toggle.
+
+		When the value of the `selectedItem` property changes, the component
+		will dispatch an event of type `Event.CHANGE`.
 
 		In the following example, the selected item is changed:
 
@@ -99,6 +126,8 @@ class ToggleGroup extends EventDispatcher {
 		```
 
 		@default null
+
+		@see `openfl.events.Event.CHANGE`
 
 		@since 1.0.0
 	**/
@@ -117,18 +146,13 @@ class ToggleGroup extends EventDispatcher {
 	}
 
 	/**
-		@since 1.0.0
-	**/
-	public var requireSelection(default, set):Bool = true;
-
-	/**
 		Determines if the user can deselect the currently selected item or not.
 		The selection may always be cleared programmatically by setting the
 		selected index to `-1` or the selected item to `null`.
 
-		If `requireSelection` is set to `true` and the toggle group has items
-		that were added previously, and there is no currently selected item, the
-		item at index `0` will be selected automatically.
+		If `requireSelection` is set to `true`, the toggle group has items that
+		were added previously, and there is no currently selected item, the item
+		at index `0` will be selected automatically.
 
 		In the following example, selection is not required:
 
@@ -137,7 +161,11 @@ class ToggleGroup extends EventDispatcher {
 		```
 
 		@default true
+
+		@since 1.0.0
 	**/
+	public var requireSelection(default, set):Bool = true;
+
 	private function set_requireSelection(value:Bool):Bool {
 		if (this.requireSelection == value) {
 			return this.requireSelection;
@@ -156,10 +184,10 @@ class ToggleGroup extends EventDispatcher {
 		In the following example, an item is added to the toggle group:
 
 		```hx
-		group.addItem( radio );
+		group.addItem(radio);
 		```
 
-		@see `removeItem()`
+		@see `ToggleGroup.removeItem`
 
 		@since 1.0.0
 	**/
@@ -173,7 +201,9 @@ class ToggleGroup extends EventDispatcher {
 			throw new IllegalOperationError("Cannot add an item to a ToggleGroup more than once.");
 		}
 		this._items.push(item);
-		if (this.selectedIndex < 0 && this.requireSelection) {
+		if (item.selected) {
+			this.selectedItem = item;
+		} else if (this.selectedIndex < 0 && this.requireSelection) {
 			this.selectedItem = item;
 		} else {
 			item.selected = false;
@@ -193,11 +223,11 @@ class ToggleGroup extends EventDispatcher {
 		In the following example, an item is removed from the toggle group:
 
 		```hx
-		group.removeItem( radio );
+		group.removeItem(radio);
 		```
 
-		@see `addItem()`
-		@see `removeAllItems()`
+		@see `ToggleGroup.addItem`
+		@see `ToggleGroup.removeAllItems`
 
 		@since 1.0.0
 	**/
@@ -264,7 +294,7 @@ class ToggleGroup extends EventDispatcher {
 		In the following example, we check if an item is in the toggle group:
 
 		```hx
-		if( group.hasItem( radio ) )
+		if(group.hasItem(radio))
 		{
 			// do something
 		}
@@ -283,10 +313,12 @@ class ToggleGroup extends EventDispatcher {
 		In the following example, an item's at a specific index is returned:
 
 		```hx
-		var item:IToggle = group.getItemAt( 2 );
+		var item:IToggle = group.getItemAt(2);
 		```
 
-		@see `numItems`
+		@see `ToggleGroup.numItems`
+
+		@since 1.0.0
 	**/
 	public function getItemAt(index:Int):IToggle {
 		return this._items[index];
@@ -299,8 +331,10 @@ class ToggleGroup extends EventDispatcher {
 		In the following example, an item's index is calculated:
 
 		```hx
-		var index:int = group.getItemIndex( radio );
+		var index:Int = group.getItemIndex(radio);
 		```
+
+		@since 1.0.0
 	**/
 	public function getItemIndex(item:IToggle):Int {
 		return this._items.indexOf(item);
@@ -313,8 +347,10 @@ class ToggleGroup extends EventDispatcher {
 		In the following example, an item's index is changed:
 
 		```hx
-		group.setItemIndex( radio, 2 );
+		group.setItemIndex(radio, 2);
 		```
+
+		@since 1.0.0
 	**/
 	public function setItemIndex(item:IToggle, index:Int):Void {
 		var oldIndex = this._items.indexOf(item);

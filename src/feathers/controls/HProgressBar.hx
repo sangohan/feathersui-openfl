@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -8,45 +8,49 @@
 
 package feathers.controls;
 
-import feathers.style.IStyleObject;
+import feathers.utils.MeasurementsUtil;
+import feathers.themes.steel.components.SteelHProgressBarStyles;
 import feathers.core.IMeasureObject;
 import feathers.core.IValidating;
 import feathers.controls.supportClasses.BaseProgressBar;
 
+/**
+	Displays the progress of a task in a horizontal direction, from left to
+	right.
+
+	The following example creates a progress bar:
+
+	```hx
+	var progressBar = new HProgressBar();
+	progressBar.minimum = 0.0;
+	progressBar.maximum = 100.0;
+	progressBar.value = 50.0;
+	this.addChild(progressBar);
+	```
+
+	@see [Tutorial: How to use the HProgressBar and VProgressBar components](https://feathersui.com/learn/haxe-openfl/progress-bar/)
+	@see `feathers.controls.VProgressBar`
+
+	@since 1.0.0
+**/
+@:styleContext
 class HProgressBar extends BaseProgressBar {
-	public function new() {
-		super();
-	}
-
-	override private function get_styleContext():Class<IStyleObject> {
-		return HProgressBar;
-	}
-
 	/**
-		If the component's dimensions have not been set explicitly, it will
-		measure its content and determine an ideal size for itself. For
-		instance, if the `explicitWidth` property is set, that value will be
-		used without additional measurement. If `explicitWidth` is set, but
-		`explicitHeight` is not (or the other way around), the dimension with
-		the explicit value will not be measured, but the other non-explicit
-		dimension will still require measurement.
-
-		Calls `saveMeasurements()` to set up the `actualWidth` and
-		`actualHeight` member variables used for layout.
-
-		Meant for internal use, and subclasses may override this function with a
-		custom implementation.
-
-		@see `FeathersControl.saveMeasurements()`
-		@see `FeathersControl.explicitWidth`
-		@see `FeathersControl.explicitHeight`
-		@see `FeathersControl.actualWidth`
-		@see `FeathersControl.actualHeight`
+		Creates a new `HProgressBar` object.
 
 		@since 1.0.0
 	**/
-	@:dox(show)
-	override private function autoSizeIfNeeded():Bool {
+	public function new() {
+		initializeHProgressBarTheme();
+
+		super();
+	}
+
+	private function initializeHProgressBarTheme():Void {
+		SteelHProgressBarStyles.initialize();
+	}
+
+	override private function measure():Bool {
 		var needsWidth = this.explicitWidth == null;
 		var needsHeight = this.explicitHeight == null;
 		var needsMinWidth = this.explicitMinWidth == null;
@@ -58,7 +62,7 @@ class HProgressBar extends BaseProgressBar {
 		}
 
 		if (this._backgroundSkinMeasurements != null) {
-			this._backgroundSkinMeasurements.resetTargetFluidlyForParent(this._currentBackgroundSkin, this);
+			MeasurementsUtil.resetFluidlyWithParent(this._backgroundSkinMeasurements, this._currentBackgroundSkin, this);
 		}
 
 		var measureBackgroundSkin:IMeasureObject = null;
@@ -70,20 +74,22 @@ class HProgressBar extends BaseProgressBar {
 			cast(this._currentBackgroundSkin, IValidating).validateNow();
 		}
 
-		// uninitialized styles need some defaults
-		var paddingTop = this.paddingTop != null ? this.paddingTop : 0.0;
-		var paddingRight = this.paddingRight != null ? this.paddingRight : 0.0;
-		var paddingBottom = this.paddingBottom != null ? this.paddingBottom : 0.0;
-		var paddingLeft = this.paddingLeft != null ? this.paddingLeft : 0.0;
-
 		var newWidth = this.explicitWidth;
 		if (needsWidth) {
-			newWidth = this._backgroundSkinMeasurements.width;
+			if (this._currentBackgroundSkin != null) {
+				newWidth = this._backgroundSkinMeasurements.width;
+			} else {
+				newWidth = 0.0;
+			}
 		}
 
 		var newHeight = this.explicitHeight;
 		if (needsHeight) {
-			newHeight = this._backgroundSkinMeasurements.height;
+			if (this._currentBackgroundSkin != null) {
+				newHeight = this._backgroundSkinMeasurements.height;
+			} else {
+				newHeight = 0.0;
+			}
 		}
 
 		var newMinWidth = this.explicitMinWidth;
@@ -101,11 +107,14 @@ class HProgressBar extends BaseProgressBar {
 	}
 
 	override private function layoutBackground():Void {
-		this._currentBackgroundSkin.x = 0;
-		this._currentBackgroundSkin.y = 0;
+		if (this._currentBackgroundSkin == null) {
+			return;
+		}
+		this._currentBackgroundSkin.x = 0.0;
+		this._currentBackgroundSkin.y = 0.0;
 
-		// don't set the width or height explicitly unless necessary because if
-		// our explicit dimensions are cleared later, the measurement may not be
+		// don' t set the width or height explicitly unless necessary because if // our explicit dimensions are cleared later, the measurement may not be
+
 		// accurate anymore
 		if (this._currentBackgroundSkin.width != this.actualWidth) {
 			this._currentBackgroundSkin.width = this.actualWidth;
@@ -119,12 +128,9 @@ class HProgressBar extends BaseProgressBar {
 	}
 
 	override private function layoutFill():Void {
-		// uninitialized styles need some defaults
-		var paddingTop = this.paddingTop != null ? this.paddingTop : 0.0;
-		var paddingRight = this.paddingRight != null ? this.paddingRight : 0.0;
-		var paddingBottom = this.paddingBottom != null ? this.paddingBottom : 0.0;
-		var paddingLeft = this.paddingLeft != null ? this.paddingLeft : 0.0;
-
+		if (this._currentFillSkin == null) {
+			return;
+		}
 		var percentage = 1.0;
 		if (this.minimum != this.maximum) {
 			percentage = (this.value - this.minimum) / (this.maximum - this.minimum);
@@ -134,7 +140,7 @@ class HProgressBar extends BaseProgressBar {
 				percentage = 1.0;
 			}
 		}
-		var calculatedWidth:Float = Math.round(percentage * (this.actualWidth - paddingLeft - paddingRight));
+		var calculatedWidth:Float = Math.round(percentage * (this.actualWidth - this.paddingLeft - this.paddingRight));
 		if (this._fillSkinMeasurements.width != null && calculatedWidth < this._fillSkinMeasurements.width) {
 			calculatedWidth = this._fillSkinMeasurements.width;
 			// if the size is too small, and the value is equal to the
@@ -145,10 +151,10 @@ class HProgressBar extends BaseProgressBar {
 			this._currentFillSkin.visible = true;
 		}
 
-		this._currentFillSkin.x = paddingLeft;
-		this._currentFillSkin.y = paddingTop;
+		this._currentFillSkin.x = this.paddingLeft;
+		this._currentFillSkin.y = this.paddingTop;
 		this._currentFillSkin.width = calculatedWidth;
-		this._currentFillSkin.height = this.actualHeight - paddingTop - paddingBottom;
+		this._currentFillSkin.height = this.actualHeight - this.paddingTop - this.paddingBottom;
 
 		if (Std.is(this._currentFillSkin, IValidating)) {
 			cast(this._currentFillSkin, IValidating).validateNow();

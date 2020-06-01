@@ -2,6 +2,8 @@ package feathers.utils;
 
 /**
 	Utility functions for mathematical calculations.
+
+	@since 1.0.0
 **/
 class MathUtil {
 	/**
@@ -15,6 +17,7 @@ class MathUtil {
 		@return	the rounded number
 
 		@see `Math.floor`
+		@see `Math.ffloor`
 
 		@since 1.0.0
 	**/
@@ -22,13 +25,13 @@ class MathUtil {
 		if (nearest == 0) {
 			return number;
 		}
-		return Math.floor(MathUtil.roundToPrecision(number / nearest, 10)) * nearest;
+		return Math.ffloor(MathUtil.roundToPrecision(number / nearest, 10)) * nearest;
 	}
 
 	/**
 		Rounds a number *up* to the nearest multiple of an input. For example,
-		by rounding `16` down to the nearest `10`, you will receive `20`, and by
-		rounding `26` down to the nearest `10`, you will receive `40`. Similar
+		by rounding `16` up to the nearest `10`, you will receive `20`, and by
+		rounding `26` up to the nearest `10`, you will receive `30`. Similar
 		to the built-in function `Math.ceil()`.
 
 		@param	numberToRound		the number to round up
@@ -36,6 +39,7 @@ class MathUtil {
 		@return	the rounded number
 
 		@see `Math.ceil`
+		@see `Math.fceil`
 
 		@since 1.0.0
 	**/
@@ -43,7 +47,29 @@ class MathUtil {
 		if (nearest == 0) {
 			return number;
 		}
-		return Math.ceil(MathUtil.roundToPrecision(number / nearest, 10)) * nearest;
+		return Math.fceil(MathUtil.roundToPrecision(number / nearest, 10)) * nearest;
+	}
+
+	/**
+		Rounds a number to the nearest multiple of an input. For example,
+		by rounding `26` to the nearest `10`, you will receive `30`, and by
+		rounding `24` to the nearest `10`, you will receive `20`. Similar
+		to the built-in function `Math.round()`.
+
+		@param	numberToRound		the number to round
+		@param	nearest				the number whose mutiple must be found
+		@return	the rounded number
+
+		@see `Math.round`
+		@see `Math.fround`
+
+		@since 1.0.0
+	**/
+	public static function roundToNearest(number:Float, nearest:Float = 1.0):Float {
+		if (nearest == 0) {
+			return number;
+		}
+		return Math.fround(MathUtil.roundToPrecision(number / nearest, 10)) * nearest;
 	}
 
 	/**
@@ -58,6 +84,6 @@ class MathUtil {
 	**/
 	public static function roundToPrecision(number:Float, precision:Int = 0):Float {
 		var decimalPlaces = Math.pow(10, precision);
-		return Math.round(decimalPlaces * number) / decimalPlaces;
+		return Math.fround(decimalPlaces * number) / decimalPlaces;
 	}
 }

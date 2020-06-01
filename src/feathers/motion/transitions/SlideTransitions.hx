@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -24,7 +24,7 @@ import feathers.motion.effects.IEffectContext;
 	carousel. Animates the `x` or `y` property of the views. The views may move
 	up, down, right, or left.
 
-	@see [Transitions for Feathers navigators](../../../help/transitions.html)
+	@see [Transitions for Feathers UI navigators](https://feathersui.com/learn/haxe-openfl/navigator-transitions/)
 
 	@since 1.0.0
 **/
@@ -38,7 +38,8 @@ class SlideTransitions {
 
 		@since 1.0.0
 	**/
-	public static function left(duration:Float = 0.5, ?ease:IEasing, ?interruptBehavior:EffectInterruptBehavior):DisplayObject->DisplayObject->IEffectContext {
+	public static function left(duration:Float = 0.5, ?ease:IEasing,
+			?interruptBehavior:EffectInterruptBehavior):(DisplayObject, DisplayObject) -> IEffectContext {
 		return function(oldView:DisplayObject, newView:DisplayObject):IEffectContext {
 			if (oldView == null && newView == null) {
 				throw new ArgumentError(VIEW_REQUIRED_ERROR);
@@ -53,10 +54,10 @@ class SlideTransitions {
 			}
 			var actuator = ActuateForEffects.update(function(x:Float):Void {
 				if (oldView != null) {
-					oldView.x = Math.round(x);
+					oldView.x = x;
 				}
 				if (newView != null) {
-					newView.x = Math.round(x + width);
+					newView.x = x + width;
 				}
 			}, duration, [0.0], [-width]);
 			if (ease != null) {
@@ -75,7 +76,7 @@ class SlideTransitions {
 		@since 1.0.0
 	**/
 	public static function right(duration:Float = 0.5, ?ease:IEasing,
-			?interruptBehavior:EffectInterruptBehavior):DisplayObject->DisplayObject->IEffectContext {
+			?interruptBehavior:EffectInterruptBehavior):(DisplayObject, DisplayObject) -> IEffectContext {
 		return function(oldView:DisplayObject, newView:DisplayObject):IEffectContext {
 			if (oldView == null && newView == null) {
 				throw new ArgumentError(VIEW_REQUIRED_ERROR);
@@ -90,10 +91,10 @@ class SlideTransitions {
 			}
 			var actuator = ActuateForEffects.update(function(x:Float):Void {
 				if (oldView != null) {
-					oldView.x = Math.round(x);
+					oldView.x = x;
 				}
 				if (newView != null) {
-					newView.x = Math.round(x - width);
+					newView.x = x - width;
 				}
 			}, duration, [0.0], [width]);
 			if (ease != null) {
@@ -111,7 +112,8 @@ class SlideTransitions {
 
 		@since 1.0.0
 	**/
-	public static function up(duration:Float = 0.5, ?ease:IEasing, ?interruptBehavior:EffectInterruptBehavior):DisplayObject->DisplayObject->IEffectContext {
+	public static function up(duration:Float = 0.5, ?ease:IEasing,
+			?interruptBehavior:EffectInterruptBehavior):(DisplayObject, DisplayObject) -> IEffectContext {
 		return function(oldView:DisplayObject, newView:DisplayObject):IEffectContext {
 			if (oldView == null && newView == null) {
 				throw new ArgumentError(VIEW_REQUIRED_ERROR);
@@ -126,10 +128,10 @@ class SlideTransitions {
 			}
 			var actuator = ActuateForEffects.update(function(y:Float):Void {
 				if (oldView != null) {
-					oldView.y = Math.round(y);
+					oldView.y = y;
 				}
 				if (newView != null) {
-					newView.y = Math.round(y + height);
+					newView.y = y + height;
 				}
 			}, duration, [0.0], [-height]);
 			if (ease != null) {
@@ -147,7 +149,8 @@ class SlideTransitions {
 
 		@since 1.0.0
 	**/
-	public static function down(duration:Float = 0.5, ?ease:IEasing, ?interruptBehavior:EffectInterruptBehavior):DisplayObject->DisplayObject->IEffectContext {
+	public static function down(duration:Float = 0.5, ?ease:IEasing,
+			?interruptBehavior:EffectInterruptBehavior):(DisplayObject, DisplayObject) -> IEffectContext {
 		return function(oldView:DisplayObject, newView:DisplayObject):IEffectContext {
 			if (oldView == null && newView == null) {
 				throw new ArgumentError(VIEW_REQUIRED_ERROR);
@@ -162,10 +165,10 @@ class SlideTransitions {
 			}
 			var actuator = ActuateForEffects.update(function(y:Float):Void {
 				if (oldView != null) {
-					oldView.y = Math.round(y);
+					oldView.y = y;
 				}
 				if (newView != null) {
-					newView.y = Math.round(y - height);
+					newView.y = y - height;
 				}
 			}, duration, [0.0], [height]);
 			if (ease != null) {

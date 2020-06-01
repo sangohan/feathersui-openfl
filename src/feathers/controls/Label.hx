@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -8,17 +8,18 @@
 
 package feathers.controls;
 
+import feathers.utils.MeasurementsUtil;
+import feathers.themes.steel.components.SteelLabelStyles;
 import feathers.core.FeathersControl;
 import feathers.core.IMeasureObject;
 import feathers.core.InvalidationFlag;
 import feathers.core.IStateContext;
 import feathers.core.IStateObserver;
+import feathers.core.ITextControl;
 import feathers.core.IUIControl;
 import feathers.core.IValidating;
-import feathers.layout.HorizontalAlign;
 import feathers.layout.Measurements;
 import feathers.layout.VerticalAlign;
-import feathers.style.IStyleObject;
 import openfl.display.DisplayObject;
 import openfl.text.TextField;
 import openfl.text.TextFieldAutoSize;
@@ -30,43 +31,108 @@ import openfl.text.TextFormat;
 	The following example creates a label and gives it text:
 
 	```hx
-	var label:Label = new Label();
+	var label = new Label();
 	label.text = "Hello World";
-	this.addChild( label );</listing>
+	this.addChild(label);
 	```
 
-	@see [How to use the Feathers `Label` component](../../../help/label.html)
+	@see [Tutorial: How to use the Label component](https://feathersui.com/learn/haxe-openfl/help/label/)
 
 	@since 1.0.0
 **/
-class Label extends FeathersControl {
+@:styleContext
+class Label extends FeathersControl implements ITextControl {
 	/**
-		Larger text for headings.
+		A variant used to style the label using a Larger text format for
+		headings. Variants allow themes to provide an assortment of different
+		appearances for the same type of UI component.
+
+		The following example uses this variant:
+
+		```hx
+		var label = new Label();
+		label.variant = Label.VARIANT_HEADING;
+		```
+
+		@see [Feathers UI User Manual: Themes](https://feathersui.com/learn/haxe-openfl/themes/)
 
 		@since 1.0.0
 	**/
 	public static final VARIANT_HEADING = "heading";
 
 	/**
-		Smaller text for details.
+		A variant used to style the label using a smaller text format for
+		details. Variants allow themes to provide an assortment of different
+		appearances for the same type of UI component.
+
+		The following example uses this variant:
+
+		```hx
+		var label = new Label();
+		label.variant = Label.VARIANT_DETAIL;
+		```
+
+		@see [Feathers UI User Manual: Themes](https://feathersui.com/learn/haxe-openfl/themes/)
 
 		@since 1.0.0
 	**/
 	public static final VARIANT_DETAIL = "detail";
 
-	public function new() {
-		super();
-	}
+	/**
+		Creates a new `Label` object.
 
-	override private function get_styleContext():Class<IStyleObject> {
-		return Label;
+		@since 1.0.0
+	**/
+	public function new() {
+		initializeLabelTheme();
+
+		super();
 	}
 
 	private var textField:TextField;
 
-	public var text(default, set):String;
+	private var _previousText:String = null;
+	private var _previousHTMLText:String = null;
+	private var _previousTextFormat:TextFormat = null;
+	private var _updatedTextStyles = false;
+	private var _textMeasuredWidth:Float;
+	private var _textMeasuredHeight:Float;
+
+	/**
+		The text displayed by the label.
+
+		The following example sets the label's text:
+
+		```hx
+		label.text = "Good afternoon!";
+		```
+
+		Note: If the `htmlText` property is not `null`, the `text` property will
+		be ignored.
+
+		@default ""
+
+		@see `Label.htmlText`
+		@see `Label.textFormat`
+
+		@since 1.0.0
+	**/
+	@:isVar
+	public var text(get, set):String = "";
+
+	private function get_text():String {
+		return this.text;
+	}
 
 	private function set_text(value:String):String {
+		if (value == null) {
+			// null gets converted to an empty string
+			if (this.text.length == 0) {
+				// already an empty string
+				return this.text;
+			}
+			value = "";
+		}
 		if (this.text == value) {
 			return this.text;
 		}
@@ -75,35 +141,146 @@ class Label extends FeathersControl {
 		return this.text;
 	}
 
-	@style
-	public var textFormat(default, set):TextFormat = null;
+	/**
+		Text displayed by the label that is parsed as a simple form of HTML.
 
-	private function set_textFormat(value:TextFormat):TextFormat {
-		if (!this.setStyle("textFormat")) {
-			return this.textFormat;
+		The following example sets the label's HTML text:
+
+		```hx
+		label.htmlText = "<b>Hello</b> <i>World</i>";
+		```
+
+		@default null
+
+		@see `Label.text`
+		@see `openfl.text.TextField.htmlText`
+
+		@since 1.0.0
+	**/
+	@:isVar
+	public var htmlText(default, set):String = null;
+
+	private function set_htmlText(value:String):String {
+		if (this.htmlText == value) {
+			return this.htmlText;
 		}
-		if (this.textFormat == value) {
-			return this.textFormat;
-		}
-		this.textFormat = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.textFormat;
+		this.htmlText = value;
+		this.setInvalid(InvalidationFlag.DATA);
+		return this.htmlText;
 	}
 
-	@style
-	public var disabledTextFormat(default, set):TextFormat = null;
+	/**
+		The font styles used to render the label's text.
 
-	private function set_disabledTextFormat(value:TextFormat):TextFormat {
-		if (!this.setStyle("disabledTextFormat")) {
-			return this.disabledTextFormat;
+		In the following example, the label's text formatting is customized:
+
+		```hx
+		label.textFormat = new TextFormat("Helvetica", 20, 0xcc0000);
+		```
+
+		@see `Label.text`
+		@see `Label.disabledTextFormat`
+		@see `Label.embedFonts`
+
+		@since 1.0.0
+	**/
+	@:style
+	public var textFormat:TextFormat = null;
+
+	/**
+		Determines if an embedded font is used or not.
+
+		In the following example, the label uses embedded fonts:
+
+		```hx
+		label.embedFonts = true;
+		```
+
+		@see `Label.textFormat`
+
+		@since 1.0.0
+	**/
+	@:style
+	public var embedFonts:Bool = false;
+
+	/**
+		Indicates if the label's text may be selected or not.
+
+		In the following example, the label text is selectable:
+
+		```hx
+		label.selectable = true;
+		```
+
+		@since 1.0.0
+	**/
+	public var selectable(default, set):Bool = false;
+
+	private function set_selectable(value:Bool):Bool {
+		if (this.selectable == value) {
+			return this.selectable;
 		}
-		if (this.disabledTextFormat == value) {
-			return this.disabledTextFormat;
-		}
-		this.disabledTextFormat = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.disabledTextFormat;
+		this.selectable = value;
+		this.setInvalid(InvalidationFlag.SELECTION);
+		return this.selectable;
 	}
+
+	/**
+		The start index of the selection.
+
+		If `selectable` is `false`, returns `-1`.
+
+		@since 1.0.0
+	**/
+	public var selectionBeginIndex(get, null):Int;
+
+	private function get_selectionBeginIndex():Int {
+		if (!this.selectable) {
+			return -1;
+		}
+		if (this.textField == null) {
+			return 0;
+		}
+		return this.textField.selectionBeginIndex;
+	}
+
+	/**
+		The end index of the selection.
+
+		If `selectable` is `false`, returns `-1`.
+
+		@since 1.0.0
+	**/
+	public var selectionEndIndex(get, null):Int;
+
+	private function get_selectionEndIndex():Int {
+		if (!this.selectable) {
+			return -1;
+		}
+		if (this.textField == null) {
+			return 0;
+		}
+		return this.textField.selectionEndIndex;
+	}
+
+	/**
+		The font styles used to render the label's text when the label is
+		disabled.
+
+		In the following example, the label's disabled text formatting is
+		customized:
+
+		```hx
+		label.enabled = false;
+		label.disabledTextFormat = new TextFormat("Helvetica", 20, 0xee0000);
+		```
+
+		@see `Label.textFormat`
+
+		@since 1.0.0
+	**/
+	@:style
+	public var disabledTextFormat:TextFormat = null;
 
 	/**
 		The minimum space, in pixels, between the button's top edge and the
@@ -112,27 +289,15 @@ class Label extends FeathersControl {
 		In the following example, the button's top padding is set to 20 pixels:
 
 		```hx
-		button.paddingTop = 20;</listing>
+		button.paddingTop = 20.0;
 		```
 
-		@default 0
+		@default 0.0
 
 		@since 1.0.0
 	**/
-	@style
-	public var paddingTop(default, set):Null<Float> = null;
-
-	private function set_paddingTop(value:Null<Float>):Null<Float> {
-		if (!this.setStyle("paddingTop")) {
-			return this.paddingTop;
-		}
-		if (this.paddingTop == value) {
-			return this.paddingTop;
-		}
-		this.paddingTop = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.paddingTop;
-	}
+	@:style
+	public var paddingTop:Float = 0.0;
 
 	/**
 		The minimum space, in pixels, between the button's right edge and the
@@ -142,27 +307,15 @@ class Label extends FeathersControl {
 		pixels:
 
 		```hx
-		button.paddingRight = 20;</listing>
+		button.paddingRight = 20.0;
 		```
 
-		@default 0
+		@default 0.0
 
 		@since 1.0.0
 	**/
-	@style
-	public var paddingRight(default, set):Null<Float> = null;
-
-	private function set_paddingRight(value:Null<Float>):Null<Float> {
-		if (!this.setStyle("paddingRight")) {
-			return this.paddingRight;
-		}
-		if (this.paddingRight == value) {
-			return this.paddingRight;
-		}
-		this.paddingRight = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.paddingRight;
-	}
+	@:style
+	public var paddingRight:Float = 0.0;
 
 	/**
 		The minimum space, in pixels, between the button's bottom edge and the
@@ -172,27 +325,15 @@ class Label extends FeathersControl {
 		pixels:
 
 		```hx
-		button.paddingBottom = 20;</listing>
+		button.paddingBottom = 20.0;
 		```
 
-		@default 0
+		@default 0.0
 
 		@since 1.0.0
 	**/
-	@style
-	public var paddingBottom(default, set):Null<Float> = null;
-
-	private function set_paddingBottom(value:Null<Float>):Null<Float> {
-		if (!this.setStyle("paddingBottom")) {
-			return this.paddingBottom;
-		}
-		if (this.paddingBottom == value) {
-			return this.paddingBottom;
-		}
-		this.paddingBottom = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.paddingBottom;
-	}
+	@:style
+	public var paddingBottom:Float = 0.0;
 
 	/**
 		The minimum space, in pixels, between the button's left edge and the
@@ -202,61 +343,15 @@ class Label extends FeathersControl {
 		pixels:
 
 		```hx
-		button.paddingLeft = 20;</listing>
+		button.paddingLeft = 20.0;
 		```
 
-		@default 0
+		@default 0.0
 
 		@since 1.0.0
 	**/
-	@style
-	public var paddingLeft(default, set):Null<Float> = null;
-
-	private function set_paddingLeft(value:Null<Float>):Null<Float> {
-		if (!this.setStyle("paddingLeft")) {
-			return this.paddingLeft;
-		}
-		if (this.paddingLeft == value) {
-			return this.paddingLeft;
-		}
-		this.paddingLeft = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.paddingLeft;
-	}
-
-	/**
-		How the content is positioned horizontally (along the x-axis) within the
-		button.
-
-		The following example aligns the button's content to the left:
-
-		```hx
-		button.verticalAlign = HorizontalAlign.LEFT;
-		```
-
-		**Note:** The `HorizontalAlign.JUSTIFY` constant is not supported by this
-		component.
-
-		@default `feathers.layout.HorizontalAlign.MIDDLE`
-
-		@see `feathers.layout.HorizontalAlign.TOP`
-		@see `feathers.layout.HorizontalAlign.MIDDLE`
-		@see `feathers.layout.HorizontalAlign.BOTTOM`
-	**/
-	@style
-	public var horizontalAlign(default, set):HorizontalAlign = null;
-
-	private function set_horizontalAlign(value:HorizontalAlign):HorizontalAlign {
-		if (!this.setStyle("horizontalAlign")) {
-			return this.horizontalAlign;
-		}
-		if (this.horizontalAlign == value) {
-			return this.horizontalAlign;
-		}
-		this.horizontalAlign = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.horizontalAlign;
-	}
+	@:style
+	public var paddingLeft:Float = 0.0;
 
 	/**
 		How the content is positioned vertically (along the y-axis) within the
@@ -265,32 +360,35 @@ class Label extends FeathersControl {
 		The following example aligns the button's content to the top:
 
 		```hx
-		button.verticalAlign = VerticalAlign.TOP;
+		button.verticalAlign = TOP;
 		```
 
 		**Note:** The `VerticalAlign.JUSTIFY` constant is not supported by this
 		component.
 
-		@default `feathers.layout.VerticalAlign.MIDDLE`
-
 		@see `feathers.layout.VerticalAlign.TOP`
 		@see `feathers.layout.VerticalAlign.MIDDLE`
 		@see `feathers.layout.VerticalAlign.BOTTOM`
 	**/
-	@style
-	public var verticalAlign(default, set):VerticalAlign = null;
+	@:style
+	public var verticalAlign:VerticalAlign = MIDDLE;
 
-	private function set_verticalAlign(value:VerticalAlign):VerticalAlign {
-		if (!this.setStyle("verticalAlign")) {
-			return this.verticalAlign;
-		}
-		if (this.verticalAlign == value) {
-			return this.verticalAlign;
-		}
-		this.verticalAlign = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.verticalAlign;
-	}
+	/**
+		Determines if the text is displayed on a single line, or if it wraps.
+
+		In the following example, the label's text wraps at 150 pixels:
+
+		```hx
+		label.width = 150.0;
+		label.wordWrap = true;
+		```
+
+		@default false
+
+		@since 1.0.0
+	**/
+	@:style
+	public var wordWrap:Bool = false;
 
 	private var _currentBackgroundSkin:DisplayObject = null;
 	private var _backgroundSkinMeasurements:Measurements = null;
@@ -298,7 +396,8 @@ class Label extends FeathersControl {
 	/**
 		The default background skin to display behind the label's text.
 
-		The following example gives the label a background skin:
+		The following example passes a bitmap for the label to use as a
+		background skin:
 
 		```hx
 		label.backgroundSkin = new Bitmap(bitmapData);
@@ -306,28 +405,12 @@ class Label extends FeathersControl {
 
 		@default null
 
-		@see `Label.backgroundDisabledSkin`
+		@see `Label.disabledBackgroundSkin`
 
 		@since 1.0.0
 	**/
-	@style
-	public var backgroundSkin(default, set):DisplayObject = null;
-
-	private function set_backgroundSkin(value:DisplayObject):DisplayObject {
-		if (!this.setStyle("backgroundSkin")) {
-			return this.backgroundSkin;
-		}
-		if (this.backgroundSkin == value) {
-			return this.backgroundSkin;
-		}
-		if (this.backgroundSkin != null && this.backgroundSkin == this._currentBackgroundSkin) {
-			this.removeCurrentBackgroundSkin(this.backgroundSkin);
-			this._currentBackgroundSkin = null;
-		}
-		this.backgroundSkin = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.backgroundSkin;
-	}
+	@:style
+	public var backgroundSkin:DisplayObject = null;
 
 	/**
 		A background skin to display behind the label's text when the label is
@@ -336,7 +419,7 @@ class Label extends FeathersControl {
 		The following example gives the label a disabled background skin:
 
 		```hx
-		label.backgroundDisabledSkin = new Bitmap(bitmapData);
+		label.disabledBackgroundSkin = new Bitmap(bitmapData);
 		label.enabled = false;
 		```
 
@@ -346,42 +429,29 @@ class Label extends FeathersControl {
 
 		@since 1.0.0
 	**/
-	@style
-	public var backgroundDisabledSkin(default, set):DisplayObject = null;
+	@:style
+	public var disabledBackgroundSkin:DisplayObject = null;
 
-	private function set_backgroundDisabledSkin(value:DisplayObject):DisplayObject {
-		if (!this.setStyle("backgroundDisabledSkin")) {
-			return this.backgroundDisabledSkin;
-		}
-		if (this.backgroundDisabledSkin == value) {
-			return this.backgroundDisabledSkin;
-		}
-		if (this.backgroundDisabledSkin != null && this.backgroundDisabledSkin == this._currentBackgroundSkin) {
-			this.removeCurrentBackgroundSkin(this.backgroundDisabledSkin);
-			this._currentBackgroundSkin = null;
-		}
-		this.backgroundDisabledSkin = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.backgroundDisabledSkin;
+	private function initializeLabelTheme():Void {
+		SteelLabelStyles.initialize();
 	}
 
 	override private function initialize():Void {
 		super.initialize();
 		if (this.textField == null) {
 			this.textField = new TextField();
-			this.textField.selectable = false;
 			this.addChild(this.textField);
 		}
 	}
 
-	private var _textMeasuredWidth:Float;
-	private var _textMeasuredHeight:Float;
-
 	override private function update():Void {
 		var dataInvalid = this.isInvalid(InvalidationFlag.DATA);
-		var stylesInvalid = this.isInvalid(InvalidationFlag.STYLES);
-		var stateInvalid = this.isInvalid(InvalidationFlag.STATE);
+		var selectionInvalid = this.isInvalid(InvalidationFlag.SELECTION);
 		var sizeInvalid = this.isInvalid(InvalidationFlag.SIZE);
+		var stateInvalid = this.isInvalid(InvalidationFlag.STATE);
+		var stylesInvalid = this.isInvalid(InvalidationFlag.STYLES);
+
+		this._updatedTextStyles = false;
 
 		if (stylesInvalid || stateInvalid) {
 			this.refreshBackgroundSkin();
@@ -391,42 +461,22 @@ class Label extends FeathersControl {
 			this.refreshTextStyles();
 		}
 
-		if (dataInvalid || stylesInvalid || stateInvalid) {
-			this.refreshText();
+		if (dataInvalid || stylesInvalid || stateInvalid || sizeInvalid) {
+			this.refreshText(sizeInvalid);
 		}
 
-		this.autoSizeIfNeeded();
+		if (dataInvalid || stylesInvalid || selectionInvalid) {
+			this.refreshSelection();
+		}
+
+		sizeInvalid = this.measure() || sizeInvalid;
 
 		if (stylesInvalid || stateInvalid || dataInvalid || sizeInvalid) {
 			this.layoutContent();
 		}
 	}
 
-	/**
-		If the component's dimensions have not been set explicitly, it will
-		measure its content and determine an ideal size for itself. For
-		instance, if the `explicitWidth` property is set, that value will be
-		used without additional measurement. If `explicitWidth` is set, but
-		`explicitHeight` is not (or the other way around), the dimension with
-		the explicit value will not be measured, but the other non-explicit
-		dimension will still require measurement.
-
-		Calls `saveMeasurements()` to set up the `actualWidth` and
-		`actualHeight` member variables used for layout.
-
-		Meant for internal use, and subclasses may override this function with a
-		custom implementation.
-
-		@see `FeathersControl.saveMeasurements()`
-		@see `FeathersControl.explicitWidth`
-		@see `FeathersControl.explicitHeight`
-		@see `FeathersControl.actualWidth`
-		@see `FeathersControl.actualHeight`
-
-		@since 1.0.0
-	**/
-	@:dox(show)
-	private function autoSizeIfNeeded():Bool {
+	private function measure():Bool {
 		var needsWidth = this.explicitWidth == null;
 		var needsHeight = this.explicitHeight == null;
 		var needsMinWidth = this.explicitMinWidth == null;
@@ -438,7 +488,7 @@ class Label extends FeathersControl {
 		}
 
 		if (this._currentBackgroundSkin != null) {
-			this._backgroundSkinMeasurements.resetTargetFluidlyForParent(this._currentBackgroundSkin, this);
+			MeasurementsUtil.resetFluidlyWithParent(this._backgroundSkinMeasurements, this._currentBackgroundSkin, this);
 		}
 
 		var measureSkin:IMeasureObject = null;
@@ -450,15 +500,9 @@ class Label extends FeathersControl {
 			cast(this._currentBackgroundSkin, IValidating).validateNow();
 		}
 
-		// uninitialized styles need some defaults
-		var paddingTop = this.paddingTop != null ? this.paddingTop : 0.0;
-		var paddingRight = this.paddingRight != null ? this.paddingRight : 0.0;
-		var paddingBottom = this.paddingBottom != null ? this.paddingBottom : 0.0;
-		var paddingLeft = this.paddingLeft != null ? this.paddingLeft : 0.0;
-
 		var newWidth = this.explicitWidth;
 		if (needsWidth) {
-			newWidth = this._textMeasuredWidth + paddingLeft + paddingRight;
+			newWidth = this._textMeasuredWidth + this.paddingLeft + this.paddingRight;
 			if (this._currentBackgroundSkin != null) {
 				newWidth = Math.max(this._currentBackgroundSkin.width, newWidth);
 			}
@@ -466,7 +510,7 @@ class Label extends FeathersControl {
 
 		var newHeight = this.explicitHeight;
 		if (needsHeight) {
-			newHeight = this._textMeasuredHeight + paddingTop + paddingBottom;
+			newHeight = this._textMeasuredHeight + this.paddingTop + this.paddingBottom;
 			if (this._currentBackgroundSkin != null) {
 				newHeight = Math.max(this._currentBackgroundSkin.height, newHeight);
 			}
@@ -474,7 +518,7 @@ class Label extends FeathersControl {
 
 		var newMinWidth = this.explicitMinWidth;
 		if (needsMinWidth) {
-			newMinWidth = this._textMeasuredWidth + paddingLeft + paddingRight;
+			newMinWidth = this._textMeasuredWidth + this.paddingLeft + this.paddingRight;
 			if (measureSkin != null) {
 				newMinWidth = Math.max(measureSkin.minWidth, newMinWidth);
 			} else if (this._backgroundSkinMeasurements != null) {
@@ -484,7 +528,7 @@ class Label extends FeathersControl {
 
 		var newMinHeight = this.explicitMinHeight;
 		if (needsMinHeight) {
-			newMinHeight = this._textMeasuredHeight + paddingTop + paddingBottom;
+			newMinHeight = this._textMeasuredHeight + this.paddingTop + this.paddingBottom;
 			if (measureSkin != null) {
 				newMinHeight = Math.max(measureSkin.minHeight, newMinHeight);
 			} else if (this._backgroundSkinMeasurements != null) {
@@ -517,27 +561,73 @@ class Label extends FeathersControl {
 	}
 
 	private function refreshTextStyles():Void {
+		if (this.textField.wordWrap != this.wordWrap) {
+			this.textField.wordWrap = this.wordWrap;
+			this._updatedTextStyles = true;
+		}
+		if (this.textField.embedFonts != this.embedFonts) {
+			this.textField.embedFonts = this.embedFonts;
+			this._updatedTextStyles = true;
+		}
 		var textFormat = this.getCurrentTextFormat();
+		if (textFormat == this._previousTextFormat) {
+			// nothing to refresh
+			return;
+		}
 		if (textFormat != null) {
 			this.textField.defaultTextFormat = textFormat;
+			this._updatedTextStyles = true;
+			this._previousTextFormat = textFormat;
 		}
 	}
 
-	private function refreshText():Void {
+	private function refreshText(sizeInvalid:Bool):Void {
 		var hasText = this.text != null && this.text.length > 0;
-		if (hasText) {
+		var hasHTMLText = this.htmlText != null && this.htmlText.length > 0;
+		this.textField.visible = hasText || hasHTMLText;
+		if (this.text == this._previousText && this.htmlText == this._previousHTMLText && !this._updatedTextStyles && !sizeInvalid) {
+			// nothing to refresh
+			return;
+		}
+		if (hasHTMLText) {
+			this.textField.htmlText = this.htmlText;
+		} else if (hasText) {
 			this.textField.text = this.text;
 		} else {
 			this.textField.text = "\u8203"; // zero-width space
 		}
 		this.textField.autoSize = TextFieldAutoSize.LEFT;
+		var textFieldWidth:Null<Float> = null;
+		if (this.explicitWidth != null) {
+			textFieldWidth = this.explicitWidth;
+		} else if (this.explicitMaxWidth != null) {
+			textFieldWidth = this.explicitMaxWidth;
+		}
+		if (textFieldWidth == null && this.wordWrap) {
+			// to get an accurate measurement, we need to temporarily disable
+			// wrapping to multiple lines
+			this.textField.wordWrap = false;
+		} else if (textFieldWidth != null) {
+			this.textField.width = textFieldWidth;
+		}
 		this._textMeasuredWidth = this.textField.width;
 		this._textMeasuredHeight = this.textField.height;
 		this.textField.autoSize = TextFieldAutoSize.NONE;
-		if (!hasText) {
-			this.textField.text = this.text;
+		if (textFieldWidth == null && this.wordWrap) {
+			this.textField.wordWrap = true;
 		}
-		this.textField.visible = hasText;
+		if (!hasText && !hasHTMLText) {
+			this.textField.text = "";
+		}
+		this._previousText = this.text;
+		this._previousHTMLText = this.htmlText;
+	}
+
+	private function refreshSelection():Void {
+		var selectable = this.selectable && this.enabled;
+		if (this.textField.selectable != selectable) {
+			this.textField.selectable = selectable;
+		}
 	}
 
 	private function getCurrentTextFormat():TextFormat {
@@ -567,14 +657,14 @@ class Label extends FeathersControl {
 			this._backgroundSkinMeasurements.save(this._currentBackgroundSkin);
 		}
 		if (Std.is(this, IStateContext) && Std.is(this._currentBackgroundSkin, IStateObserver)) {
-			cast(this._currentBackgroundSkin, IStateObserver).stateContext = cast(this, IStateContext);
+			cast(this._currentBackgroundSkin, IStateObserver).stateContext = cast(this, IStateContext<Dynamic>);
 		}
 		this.addChildAt(this._currentBackgroundSkin, 0);
 	}
 
 	private function getCurrentBackgroundSkin():DisplayObject {
-		if (!this.enabled && this.backgroundDisabledSkin != null) {
-			return this.backgroundDisabledSkin;
+		if (!this.enabled && this.disabledBackgroundSkin != null) {
+			return this.disabledBackgroundSkin;
 		}
 		return this.backgroundSkin;
 	}
@@ -586,6 +676,7 @@ class Label extends FeathersControl {
 		if (Std.is(skin, IStateObserver)) {
 			cast(skin, IStateObserver).stateContext = null;
 		}
+		this._backgroundSkinMeasurements.restore(skin);
 		if (skin.parent == this) {
 			// we need to restore these values so that they won't be lost the
 			// next time that this skin is used for measurement
@@ -596,39 +687,22 @@ class Label extends FeathersControl {
 	private function layoutContent() {
 		this.layoutBackgroundSkin();
 
-		// uninitialized styles need some defaults
-		var paddingTop = this.paddingTop != null ? this.paddingTop : 0.0;
-		var paddingRight = this.paddingRight != null ? this.paddingRight : 0.0;
-		var paddingBottom = this.paddingBottom != null ? this.paddingBottom : 0.0;
-		var paddingLeft = this.paddingLeft != null ? this.paddingLeft : 0.0;
+		this.textField.x = this.paddingLeft;
+		this.textField.width = this.actualWidth - this.paddingLeft - this.paddingRight;
 
-		var maxWidth = this.actualWidth - paddingLeft - paddingRight;
-		var maxHeight = this.actualHeight - paddingTop - paddingBottom;
-		if (this._textMeasuredWidth > maxWidth) {
-			this.textField.width = maxWidth;
-		} else {
-			this.textField.width = this._textMeasuredWidth;
-		}
+		var maxHeight = this.actualHeight - this.paddingTop - this.paddingBottom;
 		if (this._textMeasuredHeight > maxHeight) {
 			this.textField.height = maxHeight;
 		} else {
 			this.textField.height = this._textMeasuredHeight;
 		}
-		switch (this.horizontalAlign) {
-			case LEFT:
-				this.textField.x = paddingLeft;
-			case RIGHT:
-				this.textField.x = this.actualWidth - paddingRight - this.textField.width;
-			default: // center or null
-				this.textField.x = paddingLeft + (maxWidth - this.textField.width) / 2;
-		}
 		switch (this.verticalAlign) {
 			case TOP:
-				this.textField.y = paddingTop;
+				this.textField.y = this.paddingTop;
 			case BOTTOM:
-				this.textField.y = this.actualHeight - paddingBottom - this.textField.height;
+				this.textField.y = this.actualHeight - this.paddingBottom - this.textField.height;
 			default: // middle or null
-				this.textField.y = paddingTop + (maxHeight - this.textField.height) / 2;
+				this.textField.y = this.paddingTop + (maxHeight - this.textField.height) / 2.0;
 		}
 	}
 
@@ -636,8 +710,8 @@ class Label extends FeathersControl {
 		if (this._currentBackgroundSkin == null) {
 			return;
 		}
-		this._currentBackgroundSkin.x = 0;
-		this._currentBackgroundSkin.y = 0;
+		this._currentBackgroundSkin.x = 0.0;
+		this._currentBackgroundSkin.y = 0.0;
 
 		// don't set the width or height explicitly unless necessary because if
 		// our explicit dimensions are cleared later, the measurement may not be

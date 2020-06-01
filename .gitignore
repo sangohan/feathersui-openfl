@@ -4,3 +4,12 @@
 *.code-workspace
 
 build/
+dist/
+
+lib/
+lib-esm/
+node_modules/
+
+.DS_Store
+
+feathersui-openfl-*.tgz

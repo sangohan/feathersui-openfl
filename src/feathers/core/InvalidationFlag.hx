@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -23,9 +23,9 @@ package feathers.core;
 class InvalidationFlag {
 	/**
 		Indicate that the state has changed. Used when the `enabled` property of
-		a Feathers component changes, but may be used for other component states
-		too. For instance, a component that implements `IStateContext` may have
-		multiple states.
+		a Feathers UI component changes, but may be used for other component
+		states too. For instance, a component that implements `IStateContext`
+		may have multiple states.
 
 		@see `FeathersControl.enabled`
 		@see `feathers.core.IStateContext`
@@ -70,9 +70,9 @@ class InvalidationFlag {
 	public static inline var DATA = "data";
 
 	/**
-		* Indicate that the scroll position of the UI control has changed.
+		Indicate that the scroll position of the UI control has changed.
 
-				@since 1.0.0
+		@since 1.0.0
 	**/
 	public static inline var SCROLL = "scroll";
 

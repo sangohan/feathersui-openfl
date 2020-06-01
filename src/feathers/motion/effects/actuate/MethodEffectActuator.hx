@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -19,6 +19,11 @@ import motion.actuators.PropertyDetails;
 	@since 1.0.0
 **/
 class MethodEffectActuator<T> extends MethodActuator<T> implements IReadableGenericActuator {
+	/**
+		Creates a new `MethodEffectActuator` object from the given arguments.
+
+		@since 1.0.0
+	**/
 	public function new(target:T, duration:Float, properties:Dynamic) {
 		super(target, duration, properties);
 	}

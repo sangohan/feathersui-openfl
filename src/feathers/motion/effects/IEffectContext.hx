@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -22,19 +22,19 @@ interface IEffectContext extends IEventDispatcher {
 
 		@since 1.0.0
 	**/
-	var target(default, null):Dynamic;
+	var target(default, never):Dynamic;
 
 	/**
-		The total running time of the effect, in seconds.
+		The total running time of the effect, measured in seconds.
 
 		@since 1.0.0
 	**/
-	var duration(default, null):Float;
+	var duration(default, never):Float;
 
 	/**
 		The current position of the effect, in the range of `0.0` to `1.0`.
 
-		@see `duration`
+		@see `IEffectContext.duration`
 
 		@since 1.0.0
 	**/
@@ -66,7 +66,7 @@ interface IEffectContext extends IEventDispatcher {
 		Stops the effect at its current position and forces `Event.COMPLETE` to
 		be dispatched.
 
-		@see `toEnd()`
+		@see `IEffectContext.toEnd`
 
 		@since 1.0.0
 	**/
@@ -76,7 +76,7 @@ interface IEffectContext extends IEventDispatcher {
 		Advances the effect immediately to the end and forces `Event.COMPLETE`
 		to be dispatched.
 
-		@see `stop()`
+		@see `IEffectContext.stop`
 
 		@since 1.0.0
 	**/
@@ -87,8 +87,8 @@ interface IEffectContext extends IEventDispatcher {
 		its own whether this call behaves like `stop()` or if it behaves like
 		`toEnd()` instead.
 
-		@see `stop()`
-		@see `toEnd()`
+		@see `IEffectContext.stop`
+		@see `IEffectContext.toEnd`
 
 		@since 1.0.0
 	**/

@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -8,6 +8,12 @@
 
 package feathers.controls;
 
+import openfl.ui.Keyboard;
+import openfl.events.KeyboardEvent;
+import feathers.core.IFocusObject;
+import feathers.utils.MeasurementsUtil;
+import feathers.themes.steel.components.SteelTextInputStyles;
+import feathers.core.ITextControl;
 import feathers.core.FeathersControl;
 import feathers.core.IMeasureObject;
 import feathers.core.InvalidationFlag;
@@ -18,7 +24,6 @@ import feathers.core.IValidating;
 import feathers.events.FeathersEvent;
 import feathers.layout.VerticalAlign;
 import feathers.layout.Measurements;
-import feathers.style.IStyleObject;
 import openfl.display.DisplayObject;
 import openfl.events.Event;
 import openfl.events.FocusEvent;
@@ -35,27 +40,57 @@ import openfl.text.TextFormat;
 	and listens for when the text value changes:
 
 	```hx
-	var input:TextInput = new TextInput();
+	var input = new TextInput();
 	input.text = "Hello World";
-	input.selectRange( 0, input.text.length );
-	input.addEventListener( Event.CHANGE, input_changeHandler );
-	this.addChild( input );
+	input.selectRange(0, input.text.length);
+	input.addEventListener(Event.CHANGE, input_changeHandler);
+	this.addChild(input);
 	```
 
-	@see [How to use the Feathers TextInput component](../../../help/text-input.html)
-	@see [Introduction to Feathers text editors](../../../help/text-editors.html)
-	@see `feathers.controls.AutoComplete`
-	@see `feathers.controls.TextArea`
+	@see [Tutorial: How to use the TextInput component](https://feathersui.com/learn/haxe-openfl/text-input/)
 
 	@since 1.0.0
 **/
-class TextInput extends FeathersControl implements IStateContext {
+@:styleContext
+class TextInput extends FeathersControl implements IStateContext<TextInputState> implements ITextControl implements IFocusObject {
+	/**
+		Creates a new `TextInput` object.
+
+		@since 1.0.0
+	**/
 	public function new() {
+		initializeTextInputTheme();
+
 		super();
+
+		this.tabEnabled = true;
+		this.tabChildren = false;
+		this.focusRect = null;
+
+		this.addEventListener(FocusEvent.FOCUS_IN, textInput_focusInHandler);
+		this.addEventListener(KeyboardEvent.KEY_DOWN, textInput_keyDownHandler);
 	}
 
-	override private function get_styleContext():Class<IStyleObject> {
-		return TextInput;
+	/**
+		Indicates if the text input is editable.
+
+		The following example disables editing:
+
+		```hx
+		textInput.editable = false;
+		```
+
+		@since 1.0.0
+	**/
+	public var editable(default, set):Bool = true;
+
+	private function set_editable(value:Bool):Bool {
+		if (this.editable == value) {
+			return this.editable;
+		}
+		this.editable = value;
+		this.setInvalid(InvalidationFlag.STATE);
+		return this.editable;
 	}
 
 	/**
@@ -66,20 +101,20 @@ class TextInput extends FeathersControl implements IStateContext {
 
 		@since 1.0.0
 	**/
-	public var currentState(get, null):String;
+	public var currentState(get, null):TextInputState = ENABLED;
 
-	private function get_currentState():String {
+	private function get_currentState():TextInputState {
 		return this.currentState;
 	}
 
 	override private function set_enabled(value:Bool):Bool {
 		super.enabled = value;
 		if (this.enabled) {
-			if (this.currentState == TextInputState.DISABLED) {
-				this.changeState(TextInputState.ENABLED);
+			if (this.currentState == DISABLED) {
+				this.changeState(ENABLED);
 			}
 		} else {
-			this.changeState(TextInputState.DISABLED);
+			this.changeState(DISABLED);
 		}
 		return this.enabled;
 	}
@@ -91,8 +126,8 @@ class TextInput extends FeathersControl implements IStateContext {
 		The default background skin for the text input, which is used when no
 		other skin is defined for the current state with `setSkinForState()`.
 
-		The following example gives the text input a default skin to use for all
-		states when no specific skin is available:
+		The following example passes a bitmap for the text input to use as a
+		background skin:
 
 		```hx
 		input.backgroundSkin = new Bitmap(bitmapData);
@@ -105,68 +140,151 @@ class TextInput extends FeathersControl implements IStateContext {
 
 		@since 1.0.0
 	**/
-	@style
-	public var backgroundSkin(default, set):DisplayObject = null;
+	@:style
+	public var backgroundSkin:DisplayObject = null;
 
-	private function set_backgroundSkin(value:DisplayObject):DisplayObject {
-		if (!this.setStyle("backgroundSkin")) {
-			return this.backgroundSkin;
-		}
-		if (this.backgroundSkin == value) {
-			return this.backgroundSkin;
-		}
-		if (this.backgroundSkin != null && this.backgroundSkin == this._currentBackgroundSkin) {
-			this.removeCurrentBackgroundSkin(this.backgroundSkin);
-			this._currentBackgroundSkin = null;
-		}
-		this.backgroundSkin = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.backgroundSkin;
-	}
+	private var _stateToSkin:Map<TextInputState, DisplayObject> = new Map();
 
-	private var _stateToSkin:Map<String, DisplayObject> = new Map();
 	private var textField:TextField;
 
-	public var text(default, set):String;
+	private var _previousText:String = null;
+	private var _previousTextFormat:TextFormat = null;
+	private var _updatedTextStyles = false;
+
+	/**
+		The text displayed by the text input.
+
+		When the value of the `text` property changes, the text input will
+		dispatch an event of type `Event.CHANGE`.
+
+		The following example sets the text input's text:
+
+		```hx
+		input.text = "Good afternoon!";
+		```
+
+		@default ""
+
+		@see `TextInput.textFormat`
+		@see `openfl.events.Event.CHANGE`
+
+		@since 1.0.0
+	**/
+	@:isVar
+	public var text(get, set):String = "";
+
+	private function get_text():String {
+		return this.text;
+	}
 
 	private function set_text(value:String):String {
+		if (value == null) {
+			// null gets converted to an empty string
+			if (this.text.length == 0) {
+				// already an empty string
+				return this.text;
+			}
+			value = "";
+		}
 		if (this.text == value) {
 			return this.text;
 		}
 		this.text = value;
 		this.setInvalid(InvalidationFlag.DATA);
+		FeathersEvent.dispatch(this, Event.CHANGE);
 		return this.text;
 	}
 
-	@style
-	public var textFormat(default, set):TextFormat = null;
+	/**
+		Limits the set of characters that may be typed into the `TextInput`.
 
-	private function set_textFormat(value:TextFormat):TextFormat {
-		if (!this.setStyle("textFormat")) {
-			return this.textFormat;
+		In the following example, the text input's allowed characters are
+		restricted:
+
+		```hx
+		input.restrict = "0-9";
+		```
+
+		@default null
+
+		@see [`TextField.restrict`](https://api.openfl.org/openfl/text/TextField.html#restrict)
+
+		@since 1.0.0
+	**/
+	public var restrict(default, set):String;
+
+	private function set_restrict(value:String):String {
+		if (this.restrict == value) {
+			return this.restrict;
 		}
-		if (this.textFormat == value) {
-			return this.textFormat;
-		}
-		this.textFormat = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.textFormat;
+		this.restrict = value;
+		this.setInvalid(InvalidationFlag.DATA);
+		return this.restrict;
 	}
 
-	@style
-	public var disabledTextFormat(default, set):TextFormat = null;
+	/**
+		Masks the text so that it cannot be read.
 
-	private function set_disabledTextFormat(value:TextFormat):TextFormat {
-		if (!this.setStyle("disabledTextFormat")) {
-			return this.disabledTextFormat;
+		In the following example, the text input's text is displayed as a
+		password:
+
+		```hx
+		input.displayAsPassword = true;
+		```
+
+		@default null
+
+		@see [`TextField.displayAsPassword`](https://api.openfl.org/openfl/text/TextField.html#displayAsPassword)
+
+		@since 1.0.0
+	**/
+	public var displayAsPassword(default, set):Bool;
+
+	private function set_displayAsPassword(value:Bool):Bool {
+		if (this.displayAsPassword == value) {
+			return this.displayAsPassword;
 		}
-		if (this.disabledTextFormat == value) {
-			return this.disabledTextFormat;
-		}
-		this.disabledTextFormat = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.disabledTextFormat;
+		this.displayAsPassword = value;
+		this.setInvalid(InvalidationFlag.DATA);
+		return this.displayAsPassword;
 	}
+
+	/**
+		The font styles used to render the text input's text.
+
+		In the following example, the text input's formatting is customized:
+
+		```hx
+		input.textFormat = new TextFormat("Helvetica", 20, 0xcc0000);
+		```
+
+		@see `TextInput.text`
+		@see `TextInput.getTextFormatForState()`
+		@see `TextInput.setTextFormatForState()`
+		@see `TextInput.embedFonts`
+
+		@since 1.0.0
+	**/
+	@:style
+	public var textFormat:TextFormat = null;
+
+	/**
+		Determines if an embedded font is used or not.
+
+		In the following example, the text input uses embedded fonts:
+
+		```hx
+		input.embedFonts = true;
+		```
+
+		@see `TextInput.textFormat`
+
+		@since 1.0.0
+	**/
+	@:style
+	public var embedFonts:Bool = false;
+
+	private var _stateToTextFormat:Map<TextInputState, TextFormat> = new Map();
 
 	/**
 		The minimum space, in pixels, between the text input's top edge and the
@@ -176,27 +294,15 @@ class TextInput extends FeathersControl implements IStateContext {
 		pixels:
 
 		```hx
-		input.paddingTop = 20;</listing>
+		input.paddingTop = 20.0;
 		```
 
-		@default 0
+		@default 0.0
 
 		@since 1.0.0
 	**/
-	@style
-	public var paddingTop(default, set):Null<Float> = null;
-
-	private function set_paddingTop(value:Null<Float>):Null<Float> {
-		if (!this.setStyle("paddingTop")) {
-			return this.paddingTop;
-		}
-		if (this.paddingTop == value) {
-			return this.paddingTop;
-		}
-		this.paddingTop = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.paddingTop;
-	}
+	@:style
+	public var paddingTop:Float = 0.0;
 
 	/**
 		The minimum space, in pixels, between the text input's right edge and
@@ -206,27 +312,15 @@ class TextInput extends FeathersControl implements IStateContext {
 		pixels:
 
 		```hx
-		input.paddingRight = 20;</listing>
+		input.paddingRight = 20.0;
 		```
 
-		@default 0
+		@default 0.0
 
 		@since 1.0.0
 	**/
-	@style
-	public var paddingRight(default, set):Null<Float> = null;
-
-	private function set_paddingRight(value:Null<Float>):Null<Float> {
-		if (!this.setStyle("paddingRight")) {
-			return this.paddingRight;
-		}
-		if (this.paddingRight == value) {
-			return this.paddingRight;
-		}
-		this.paddingRight = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.paddingRight;
-	}
+	@:style
+	public var paddingRight:Float = 0.0;
 
 	/**
 		The minimum space, in pixels, between the text input's bottom edge and
@@ -236,27 +330,15 @@ class TextInput extends FeathersControl implements IStateContext {
 		pixels:
 
 		```hx
-		input.paddingBottom = 20;</listing>
+		input.paddingBottom = 20.0;
 		```
 
-		@default 0
+		@default 0.0
 
 		@since 1.0.0
 	**/
-	@style
-	public var paddingBottom(default, set):Null<Float> = null;
-
-	private function set_paddingBottom(value:Null<Float>):Null<Float> {
-		if (!this.setStyle("paddingBottom")) {
-			return this.paddingBottom;
-		}
-		if (this.paddingBottom == value) {
-			return this.paddingBottom;
-		}
-		this.paddingBottom = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.paddingBottom;
-	}
+	@:style
+	public var paddingBottom:Float = 0.0;
 
 	/**
 		The minimum space, in pixels, between the text input's left edge and the
@@ -266,27 +348,15 @@ class TextInput extends FeathersControl implements IStateContext {
 		pixels:
 
 		```hx
-		input.paddingLeft = 20;</listing>
+		input.paddingLeft = 20.0;
 		```
 
-		@default 0
+		@default 0.0
 
 		@since 1.0.0
 	**/
-	@style
-	public var paddingLeft(default, set):Null<Float> = null;
-
-	private function set_paddingLeft(value:Null<Float>):Null<Float> {
-		if (!this.setStyle("paddingLeft")) {
-			return this.paddingLeft;
-		}
-		if (this.paddingLeft == value) {
-			return this.paddingLeft;
-		}
-		this.paddingLeft = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.paddingLeft;
-	}
+	@:style
+	public var paddingLeft:Float = 0.0;
 
 	/**
 		How the content is positioned vertically (along the y-axis) within the
@@ -295,30 +365,43 @@ class TextInput extends FeathersControl implements IStateContext {
 		The following example aligns the text input's content to the top:
 
 		```hx
-		input.verticalAlign = VerticalAlign.TOP;
+		input.verticalAlign = TOP;
 		```
-
-		@default `feathers.layout.VerticalAlign.MIDDLE`
 
 		@see `feathers.layout.VerticalAlign.TOP`
 		@see `feathers.layout.VerticalAlign.MIDDLE`
 		@see `feathers.layout.VerticalAlign.BOTTOM`
 		@see `feathers.layout.VerticalAlign.JUSTIFY`
 	**/
-	@style
-	public var verticalAlign(default, set):VerticalAlign = null;
+	@:style
+	public var verticalAlign:VerticalAlign = MIDDLE;
 
-	private function set_verticalAlign(value:VerticalAlign):VerticalAlign {
-		if (!this.setStyle("verticalAlign")) {
-			return this.verticalAlign;
+	/**
+		The horizontal scroll position (on the x-axis) of the text, measured in
+		pixels.
+
+		The following example changes the text input's scroll position:
+
+		```hx
+		input.scrollX = 20.0;
+		```
+
+		@since 1.0.0
+	**/
+	public var scrollX(default, set):Float = 0.0;
+
+	private function set_scrollX(value:Float):Float {
+		if (this.scrollX == value) {
+			return this.scrollX;
 		}
-		if (this.verticalAlign == value) {
-			return this.verticalAlign;
-		}
-		this.verticalAlign = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.verticalAlign;
+		this.scrollX = value;
+		this.setInvalid(InvalidationFlag.SCROLL);
+		FeathersEvent.dispatch(this, Event.SCROLL);
+		return this.scrollX;
 	}
+
+	private var _textMeasuredWidth:Float;
+	private var _textMeasuredHeight:Float;
 
 	/**
 		Gets the skin to be used by the text input when its `currentState`
@@ -326,9 +409,10 @@ class TextInput extends FeathersControl implements IStateContext {
 
 		If a skin is not defined for a specific state, returns `null`.
 
-		@see `TextInput.backgroundSkin`
 		@see `TextInput.setSkinForState()`
+		@see `TextInput.backgroundSkin`
 		@see `TextInput.currentState`
+		@see `feathers.controls.TextInputState`
 
 		@since 1.0.0
 	**/
@@ -343,9 +427,10 @@ class TextInput extends FeathersControl implements IStateContext {
 		If a skin is not defined for a specific state, the value of the
 		`backgroundSkin` property will be used instead.
 
-		@see `TextInput.backgroundSkin`
 		@see `TextInput.getSkinForState()`
+		@see `TextInput.backgroundSkin`
 		@see `TextInput.currentState`
+		@see `feathers.controls.TextInputState`
 
 		@since 1.0.0
 	**/
@@ -367,16 +452,62 @@ class TextInput extends FeathersControl implements IStateContext {
 		this.setInvalid(InvalidationFlag.STYLES);
 	}
 
-	private var _textMeasuredWidth:Float;
-	private var _textMeasuredHeight:Float;
+	/**
+		Gets the text format to be used by the text input when its `currentState`
+		property matches the specified state value.
+
+		If a text format is not defined for a specific state, returns `null`.
+
+		@see `TextInput.setTextFormatForState()`
+		@see `TextInput.textFormat`
+		@see `TextInput.currentState`
+		@see `feathers.controls.TextInputState`
+
+		@since 1.0.0
+	**/
+	public function getTextFormatForState(state:TextInputState):TextFormat {
+		return this._stateToTextFormat.get(state);
+	}
+
+	/**
+		Set the text format to be used by the text input when its `currentState`
+		property matches the specified state value.
+
+		If a text format is not defined for a specific state, the value of the
+		`textFormat` property will be used instead.
+
+		@see `TextInput.getTextFormatForState()`
+		@see `TextInput.textFormat`
+		@see `TextInput.currentState`
+		@see `feathers.controls.TextInputState`
+
+		@since 1.0.0
+	**/
+	@style
+	public function setTextFormatForState(state:TextInputState, textFormat:TextFormat):Void {
+		if (!this.setStyle("setTextFormatForState", state)) {
+			return;
+		}
+		if (textFormat == null) {
+			this._stateToTextFormat.remove(state);
+		} else {
+			this._stateToTextFormat.set(state, textFormat);
+		}
+		this.setInvalid(InvalidationFlag.STYLES);
+	}
+
+	private function initializeTextInputTheme():Void {
+		SteelTextInputStyles.initialize();
+	}
 
 	override private function initialize():Void {
 		super.initialize();
 		if (this.textField == null) {
 			this.textField = new TextField();
-			this.textField.type = TextFieldType.INPUT;
 			this.textField.selectable = true;
+			this.textField.tabEnabled = false;
 			this.textField.addEventListener(Event.CHANGE, textField_changeHandler);
+			this.textField.addEventListener(Event.SCROLL, textField_scrollHandler);
 			this.textField.addEventListener(FocusEvent.FOCUS_IN, textField_focusInHandler);
 			this.textField.addEventListener(FocusEvent.FOCUS_OUT, textField_focusOutHandler);
 			this.addChild(this.textField);
@@ -385,8 +516,11 @@ class TextInput extends FeathersControl implements IStateContext {
 
 	override private function update():Void {
 		var dataInvalid = this.isInvalid(InvalidationFlag.DATA);
-		var stylesInvalid = this.isInvalid(InvalidationFlag.STYLES);
+		var scrollInvalid = this.isInvalid(InvalidationFlag.SCROLL);
 		var stateInvalid = this.isInvalid(InvalidationFlag.STATE);
+		var stylesInvalid = this.isInvalid(InvalidationFlag.STYLES);
+
+		this._updatedTextStyles = false;
 
 		if (stylesInvalid || stateInvalid) {
 			this.refreshBackgroundSkin();
@@ -400,7 +534,11 @@ class TextInput extends FeathersControl implements IStateContext {
 			this.refreshText();
 		}
 
-		this.autoSizeIfNeeded();
+		if (scrollInvalid) {
+			this.refreshScrollPosition();
+		}
+
+		this.measure();
 		this.layoutContent();
 	}
 
@@ -444,6 +582,7 @@ class TextInput extends FeathersControl implements IStateContext {
 		if (Std.is(skin, IStateObserver)) {
 			cast(skin, IStateObserver).stateContext = null;
 		}
+		this._backgroundSkinMeasurements.restore(skin);
 		if (skin.parent == this) {
 			// we need to restore these values so that they won't be lost the
 			// next time that this skin is used for measurement
@@ -451,31 +590,7 @@ class TextInput extends FeathersControl implements IStateContext {
 		}
 	}
 
-	/**
-		If the component's dimensions have not been set explicitly, it will
-		measure its content and determine an ideal size for itself. For
-		instance, if the `explicitWidth` property is set, that value will be
-		used without additional measurement. If `explicitWidth` is set, but
-		`explicitHeight` is not (or the other way around), the dimension with
-		the explicit value will not be measured, but the other non-explicit
-		dimension will still require measurement.
-
-		Calls `saveMeasurements()` to set up the `actualWidth` and
-		`actualHeight` member variables used for layout.
-
-		Meant for internal use, and subclasses may override this function with a
-		custom implementation.
-
-		@see `FeathersControl.saveMeasurements()`
-		@see `FeathersControl.explicitWidth`
-		@see `FeathersControl.explicitHeight`
-		@see `FeathersControl.actualWidth`
-		@see `FeathersControl.actualHeight`
-
-		@since 1.0.0
-	**/
-	@:dox(show)
-	private function autoSizeIfNeeded():Bool {
+	private function measure():Bool {
 		var needsWidth = this.explicitWidth == null;
 		var needsHeight = this.explicitHeight == null;
 		var needsMinWidth = this.explicitMinWidth == null;
@@ -487,7 +602,7 @@ class TextInput extends FeathersControl implements IStateContext {
 		}
 
 		if (this._backgroundSkinMeasurements != null) {
-			this._backgroundSkinMeasurements.resetTargetFluidlyForParent(this._currentBackgroundSkin, this);
+			MeasurementsUtil.resetFluidlyWithParent(this._backgroundSkinMeasurements, this._currentBackgroundSkin, this);
 		}
 
 		var measureSkin:IMeasureObject = null;
@@ -499,24 +614,18 @@ class TextInput extends FeathersControl implements IStateContext {
 			cast(this._currentBackgroundSkin, IValidating).validateNow();
 		}
 
-		// uninitialized styles need some defaults
-		var paddingTop = this.paddingTop != null ? this.paddingTop : 0.0;
-		var paddingRight = this.paddingRight != null ? this.paddingRight : 0.0;
-		var paddingBottom = this.paddingBottom != null ? this.paddingBottom : 0.0;
-		var paddingLeft = this.paddingLeft != null ? this.paddingLeft : 0.0;
-
 		var newWidth = this.explicitWidth;
 		if (needsWidth) {
 			if (this._currentBackgroundSkin != null) {
 				newWidth = this._currentBackgroundSkin.width;
 			} else {
-				newWidth = 0;
+				newWidth = 0.0;
 			}
 		}
 
 		var newHeight = this.explicitHeight;
 		if (needsHeight) {
-			newHeight = this._textMeasuredHeight + paddingTop + paddingBottom;
+			newHeight = this._textMeasuredHeight + this.paddingTop + this.paddingBottom;
 			if (this._currentBackgroundSkin != null) {
 				newHeight = Math.max(this._currentBackgroundSkin.height, newHeight);
 			}
@@ -529,13 +638,13 @@ class TextInput extends FeathersControl implements IStateContext {
 			} else if (this._backgroundSkinMeasurements != null) {
 				newMinWidth = this._backgroundSkinMeasurements.minWidth;
 			} else {
-				newMinWidth = 0;
+				newMinWidth = 0.0;
 			}
 		}
 
 		var newMinHeight = this.explicitMinHeight;
 		if (needsMinHeight) {
-			newMinHeight = this._textMeasuredHeight + paddingTop + paddingBottom;
+			newMinHeight = this._textMeasuredHeight + this.paddingTop + this.paddingBottom;
 			if (measureSkin != null) {
 				newMinHeight = Math.max(measureSkin.minHeight, newMinHeight);
 			} else if (this._backgroundSkinMeasurements != null) {
@@ -568,13 +677,37 @@ class TextInput extends FeathersControl implements IStateContext {
 	}
 
 	private function refreshTextStyles():Void {
+		if (this.enabled && this.editable && this.textField.type != TextFieldType.INPUT) {
+			this.textField.type = TextFieldType.INPUT;
+		} else if ((!this.enabled || !this.editable) && this.textField.type == TextFieldType.INPUT) {
+			this.textField.type = TextFieldType.DYNAMIC;
+		}
+		if (this.textField.embedFonts != this.embedFonts) {
+			this.textField.embedFonts = this.embedFonts;
+			this._updatedTextStyles = true;
+		}
+		if (this.textField.displayAsPassword != this.displayAsPassword) {
+			this.textField.displayAsPassword = this.displayAsPassword;
+			this._updatedTextStyles = true;
+		}
 		var textFormat = this.getCurrentTextFormat();
+		if (textFormat == this._previousTextFormat) {
+			// nothing to refresh
+			return;
+		}
 		if (textFormat != null) {
 			this.textField.defaultTextFormat = textFormat;
+			this._updatedTextStyles = true;
+			this._previousTextFormat = textFormat;
 		}
 	}
 
 	private function refreshText():Void {
+		this.textField.restrict = restrict;
+		if (this.text == this._previousText && !this._updatedTextStyles) {
+			// nothing to refresh
+			return;
+		}
 		var hasText = this.text != null && this.text.length > 0;
 		if (hasText) {
 			this.textField.text = this.text;
@@ -586,13 +719,19 @@ class TextInput extends FeathersControl implements IStateContext {
 		this._textMeasuredHeight = this.textField.height;
 		this.textField.autoSize = TextFieldAutoSize.NONE;
 		if (!hasText) {
-			this.textField.text = this.text;
+			this.textField.text = "";
 		}
+		this._previousText = this.text;
+	}
+
+	private function refreshScrollPosition():Void {
+		this.textField.scrollH = Math.round(this.scrollX);
 	}
 
 	private function getCurrentTextFormat():TextFormat {
-		if (!this.enabled && this.disabledTextFormat != null) {
-			return this.disabledTextFormat;
+		var result = this._stateToTextFormat.get(this.currentState);
+		if (result != null) {
+			return result;
 		}
 		return this.textFormat;
 	}
@@ -600,16 +739,10 @@ class TextInput extends FeathersControl implements IStateContext {
 	private function layoutContent():Void {
 		this.layoutBackgroundSkin();
 
-		// uninitialized styles need some defaults
-		var paddingTop = this.paddingTop != null ? this.paddingTop : 0.0;
-		var paddingRight = this.paddingRight != null ? this.paddingRight : 0.0;
-		var paddingBottom = this.paddingBottom != null ? this.paddingBottom : 0.0;
-		var paddingLeft = this.paddingLeft != null ? this.paddingLeft : 0.0;
+		this.textField.x = this.paddingLeft;
+		this.textField.width = this.actualWidth - this.paddingLeft - this.paddingRight;
 
-		this.textField.x = paddingLeft;
-		this.textField.width = this.actualWidth - paddingLeft - paddingRight;
-
-		var maxHeight = this.actualHeight - paddingTop - paddingBottom;
+		var maxHeight = this.actualHeight - this.paddingTop - this.paddingBottom;
 		if (this._textMeasuredHeight > maxHeight) {
 			this.textField.height = maxHeight;
 		} else {
@@ -617,16 +750,16 @@ class TextInput extends FeathersControl implements IStateContext {
 		}
 		switch (this.verticalAlign) {
 			case TOP:
-				this.textField.y = paddingTop;
+				this.textField.y = this.paddingTop;
 				this.textField.height = Math.min(maxHeight, this.textField.height);
 			case BOTTOM:
-				this.textField.y = this.actualHeight - paddingBottom - this.textField.height;
+				this.textField.y = this.actualHeight - this.paddingBottom - this.textField.height;
 				this.textField.height = Math.min(maxHeight, this.textField.height);
 			case JUSTIFY:
-				this.textField.y = paddingTop;
+				this.textField.y = this.paddingTop;
 				this.textField.height = maxHeight;
 			default: // middle or null
-				this.textField.y = paddingTop + (maxHeight - this.textField.height) / 2;
+				this.textField.y = this.paddingTop + (maxHeight - this.textField.height) / 2.0;
 				this.textField.height = Math.min(maxHeight, this.textField.height);
 		}
 	}
@@ -635,8 +768,8 @@ class TextInput extends FeathersControl implements IStateContext {
 		if (this._currentBackgroundSkin == null) {
 			return;
 		}
-		this._currentBackgroundSkin.x = 0;
-		this._currentBackgroundSkin.y = 0;
+		this._currentBackgroundSkin.x = 0.0;
+		this._currentBackgroundSkin.y = 0.0;
 
 		// don't set the width or height explicitly unless necessary because if
 		// our explicit dimensions are cleared later, the measurement may not be
@@ -652,9 +785,9 @@ class TextInput extends FeathersControl implements IStateContext {
 		}
 	}
 
-	private function changeState(state:String):Void {
+	private function changeState(state:TextInputState):Void {
 		if (!this.enabled) {
-			state = TextInputState.DISABLED;
+			state = DISABLED;
 		}
 		if (this.currentState == state) {
 			return;
@@ -665,18 +798,53 @@ class TextInput extends FeathersControl implements IStateContext {
 	}
 
 	private function textField_changeHandler(event:Event):Void {
-		// don't let this event bubble. Feathers components don't bubble their
+		// don't let this event bubble. Feathers UI components don't bubble their
 		// events — especially not Event.CHANGE!
 		event.stopPropagation();
 
-		this.text = this.textField.text;
+		// no need to invalidate here. just store the new text.
+		@:bypassAccessor this.text = this.textField.text;
+		// but the event still needs to be dispatched
+		FeathersEvent.dispatch(this, Event.CHANGE);
+	}
+
+	private function textField_scrollHandler(event:Event):Void {
+		// no need to invalidate here. just store the new scroll position.
+		@:bypassAccessor this.scrollX = this.textField.scrollH;
+		// but the event still needs to be dispatched
+		FeathersEvent.dispatch(this, Event.SCROLL);
+	}
+
+	private function textInput_focusInHandler(event:FocusEvent):Void {
+		if (Reflect.compare(event.target, this) == 0) {
+			this.stage.focus = this.textField;
+		}
+	}
+
+	private function textInput_keyDownHandler(event:KeyboardEvent):Void {
+		if (!this.enabled || event.isDefaultPrevented()) {
+			return;
+		}
+		switch (event.keyCode) {
+			case Keyboard.UP:
+			case Keyboard.DOWN:
+			case Keyboard.LEFT:
+			case Keyboard.RIGHT:
+			case Keyboard.PAGE_UP:
+			case Keyboard.PAGE_DOWN:
+			case Keyboard.HOME:
+			case Keyboard.END:
+			default:
+				return;
+		}
+		event.stopPropagation();
 	}
 
 	private function textField_focusInHandler(event:FocusEvent):Void {
-		this.changeState(TextInputState.FOCUSED);
+		this.changeState(FOCUSED);
 	}
 
 	private function textField_focusOutHandler(event:FocusEvent):Void {
-		this.changeState(TextInputState.ENABLED);
+		this.changeState(ENABLED);
 	}
 }

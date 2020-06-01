@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -10,18 +10,21 @@ package feathers.controls;
 
 /**
 	States for toggle button components, including controls like `ToggleButton`,
-	`CheckBox`, `Radio`, and data renderers.
+	`Check`, `Radio`, and data renderers.
+
+	@see `feathers.controls.ToggleButton`
+	@see `feathers.controls.Check`
+	@see `feathers.controls.Radio`
 
 	@since 1.0.0
 **/
-@:enum
-abstract ToggleButtonState(String) {
+enum ToggleButtonState {
 	/**
 		The up state, when there is no interaction.
 
 		@since 1.0.0
 	**/
-	var UP = "up";
+	UP(selected:Bool);
 
 	/**
 		The hover state, when the mouse is over the component. This state is not
@@ -29,52 +32,19 @@ abstract ToggleButtonState(String) {
 
 		@since 1.0.0
 	**/
-	var HOVER = "hover";
+	HOVER(selected:Bool);
 
 	/**
 		The down state, on mouse down or touch begin.
 
 		@since 1.0.0
 	**/
-	var DOWN = "down";
+	DOWN(selected:Bool);
 
 	/**
 		The disabled state, when the component's `enabled` property is `false`.
 
 		@since 1.0.0
 	**/
-	var DISABLED = "disabled";
-
-	/**
-		The up state, when the component is selected.
-
-		@since 1.0.0
-	**/
-	var UP_AND_SELECTED = "upAndSelected";
-
-	/**
-		The hover state, when the component is selected.
-
-		@since 1.0.0
-	**/
-	var HOVER_AND_SELECTED = "hoverAndSelected";
-
-	/**
-		The down state, when the component is selected.
-
-		@since 1.0.0
-	**/
-	var DOWN_AND_SELECTED = "downAndSelected";
-
-	/**
-		The disabled state, when the component is selected.
-
-		@since 1.0.0
-	**/
-	var DISABLED_AND_SELECTED = "disabledAndSelected";
-
-	@:to
-	public function toString() {
-		return this;
-	}
+	DISABLED(selected:Bool);
 }

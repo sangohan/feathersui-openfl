@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -24,7 +24,7 @@ interface IValidating {
 
 		@since 1.0.0
 	**/
-	public var depth(default, null):Int;
+	public var depth(default, never):Int;
 
 	/**
 		Immediately validates the display object, if it is invalid. The

@@ -1,10 +1,6 @@
-import openfl.display.DisplayObject;
-import openfl.display.Stage;
 import openfl.display.Sprite;
-import massive.munit.client.PrintClient;
 import massive.munit.client.RichPrintClient;
 import massive.munit.client.HTTPClient;
-import massive.munit.client.JUnitReportClient;
 import massive.munit.client.SummaryReportClient;
 import massive.munit.TestRunner;
 
@@ -31,7 +27,7 @@ class TestMain extends Sprite {
 		var httpClient = new HTTPClient(new SummaryReportClient());
 		#end
 
-		var runner:TestRunner = new TestRunner(client);
+		var runner = new TestRunner(client);
 		runner.addResultClient(httpClient);
 		// runner.addResultClient(new HTTPClient(new JUnitReportClient()));
 

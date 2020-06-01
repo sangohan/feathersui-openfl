@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -10,8 +10,6 @@ package feathers.core;
 
 import openfl.display.Stage;
 import openfl.events.Event;
-
-@:dox(hide)
 
 /**
 	A queue for components that are invalid.
@@ -37,6 +35,11 @@ class ValidationQueue {
 		return STAGE_TO_VALIDATION_QUEUE[stage];
 	}
 
+	/**
+		Creates a new `ValidationQueue` object with the given arguments.
+
+		@since 1.0.0
+	**/
 	public function new(stage:Stage) {
 		this._stage = stage;
 		this._stage.addEventListener(Event.ENTER_FRAME, stage_enterFrameHandler, false, -1000, true);
@@ -109,6 +112,8 @@ class ValidationQueue {
 
 	/**
 		Immediately validates all components in the queue.
+
+		@since 1.0.0
 	**/
 	public function validateNow():Void {
 		if (this.validating) {

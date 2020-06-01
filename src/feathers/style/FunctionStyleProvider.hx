@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -8,8 +8,7 @@
 
 package feathers.style;
 
-import feathers.events.FeathersEvent;
-import openfl.events.Event;
+import feathers.events.StyleProviderEvent;
 import openfl.events.EventDispatcher;
 
 /**
@@ -22,20 +21,25 @@ import openfl.events.EventDispatcher;
 	```hx
 	var button = new Button();
 	button.text = "Click Me";
-	button.styleProvider = new FunctionStyleProvider( function( target:Button ):Void
+	button.styleProvider = new FunctionStyleProvider(function(target:Button):Void
 	{
-		target.backgroundSkin = new Bitmap( bitmapData );
+		target.backgroundSkin = new Bitmap(bitmapData);
 		// set other styles...
 	});
-	this.addChild( button );
+	this.addChild(button);
 	```
 
-	@see [Skinning Feathers UI components](../../../help/skinning.html)
+	@see [Styling and skinning Feathers UI components](https://feathersui.com/learn/haxe-openfl/styling-and-skinning/)
 
 	@since 1.0.0
 **/
 class FunctionStyleProvider extends EventDispatcher implements IStyleProvider {
-	public function new(callback:Dynamic->Void) {
+	/**
+		Creates a new `FunctionStyleProvider` object with the given arguments.
+
+		@since 1.0.0
+	**/
+	public function new(?callback:(Dynamic) -> Void) {
 		super();
 		this.callback = callback;
 	}
@@ -46,17 +50,22 @@ class FunctionStyleProvider extends EventDispatcher implements IStyleProvider {
 
 		@since 1.0.0
 	**/
-	public var callback(default, set):Dynamic->Void;
+	public var callback(default, set):(Dynamic) -> Void;
 
-	private function set_callback(value:Dynamic->Void):Dynamic->Void {
+	private function set_callback(value:(Dynamic) -> Void):(Dynamic) -> Void {
 		if (this.callback == value) {
 			return this.callback;
 		}
 		this.callback = value;
-		FeathersEvent.dispatch(this, Event.CHANGE);
+		StyleProviderEvent.dispatch(this, StyleProviderEvent.STYLES_CHANGE);
 		return this.callback;
 	}
 
+	/**
+		Applies styles to the target object.
+
+		@since 1.0.0
+	**/
 	public function applyStyles(target:IStyleObject):Void {
 		if (this.callback == null) {
 			return;

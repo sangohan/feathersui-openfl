@@ -1,8 +1,17 @@
+/*
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
+
+	This program is free software. You can redistribute and/or modify it in
+	accordance with the terms of the accompanying license agreement.
+ */
+
 package feathers.style;
 
 import feathers.controls.LayoutGroup;
 import massive.munit.Assert;
 
+@:keep
 class ClassVariantStyleProviderTest {
 	private static final VARIANT_ONE = "one";
 	private static final VARIANT_TWO = "two";

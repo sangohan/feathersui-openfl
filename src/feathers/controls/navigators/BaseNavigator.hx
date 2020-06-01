@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -8,6 +8,8 @@
 
 package feathers.controls.navigators;
 
+import feathers.utils.MeasurementsUtil;
+import openfl.display.InteractiveObject;
 import openfl.errors.ArgumentError;
 import feathers.core.IMeasureObject;
 import feathers.core.IUIControl;
@@ -27,9 +29,6 @@ import feathers.core.FeathersControl;
 
 /**
 	Base class for navigator components.
-
-	@see `feathers.controls.navigators.StackNavigator`
-	@see `feathers.controls.navigators.TabNavigator`
 
 	@since 1.0.0
 **/
@@ -74,11 +73,11 @@ class BaseNavigator extends FeathersControl {
 	private var _previousViewInTransition:DisplayObject;
 	private var _previousViewInTransitionID:String;
 	private var _nextItemID:String;
-	private var _nextItemTransition:DisplayObject->DisplayObject->IEffectContext;
+	private var _nextItemTransition:(DisplayObject, DisplayObject) -> IEffectContext;
 	private var _clearAfterTransition:Bool = false;
-	private var _delayedTransition:DisplayObject->DisplayObject->IEffectContext;
+	private var _delayedTransition:(DisplayObject, DisplayObject) -> IEffectContext;
 	private var _waitingForDelayedTransition:Bool = false;
-	private var _waitingTransition:DisplayObject->DisplayObject->IEffectContext;
+	private var _waitingTransition:(DisplayObject, DisplayObject) -> IEffectContext;
 	private var _waitingForTransitionFrameCount:Int = 0;
 
 	/**
@@ -89,7 +88,7 @@ class BaseNavigator extends FeathersControl {
 		content:
 
 		```hx
-		navigator.autoSizeMode = AutoSizeMode.CONTENT;
+		navigator.autoSizeMode = CONTENT;
 		```
 
 		@default `feathers.controls.AutoSizeMode.STAGE`
@@ -99,7 +98,7 @@ class BaseNavigator extends FeathersControl {
 
 		@since 1.0.0
 	**/
-	public var autoSizeMode(default, set):AutoSizeMode = AutoSizeMode.STAGE;
+	public var autoSizeMode(default, set):AutoSizeMode = STAGE;
 
 	private function set_autoSizeMode(value:AutoSizeMode):AutoSizeMode {
 		if (this.autoSizeMode == value) {
@@ -108,7 +107,7 @@ class BaseNavigator extends FeathersControl {
 		this.autoSizeMode = value;
 		this.setInvalid(InvalidationFlag.SIZE);
 		if (this.activeItemView != null) {
-			if (this.autoSizeMode == AutoSizeMode.STAGE) {
+			if (this.autoSizeMode == STAGE) {
 				this.activeItemView.removeEventListener(Event.RESIZE, activeItemView_resizeHandler);
 			} else // content
 			{
@@ -116,7 +115,7 @@ class BaseNavigator extends FeathersControl {
 			}
 		}
 		if (this.stage != null) {
-			if (this.autoSizeMode == AutoSizeMode.STAGE) {
+			if (this.autoSizeMode == STAGE) {
 				this.stage.addEventListener(Event.RESIZE, baseNavigator_stage_resizeHandler);
 				this.addEventListener(Event.REMOVED_FROM_STAGE, baseNavigator_removedFromStageHandler);
 			} else // content
@@ -176,35 +175,11 @@ class BaseNavigator extends FeathersControl {
 
 	override private function update():Void {
 		var sizeInvalid = this.isInvalid(InvalidationFlag.SIZE);
-		sizeInvalid = this.autoSizeIfNeeded() || sizeInvalid;
+		sizeInvalid = this.measure() || sizeInvalid;
 		this.layoutContent();
 	}
 
-	/**
-		If the component's dimensions have not been set explicitly, it will
-		measure its content and determine an ideal size for itself. For
-		instance, if the `explicitWidth` property is set, that value will be
-		used without additional measurement. If `explicitWidth` is set, but
-		`explicitHeight` is not (or the other way around), the dimension with
-		the explicit value will not be measured, but the other non-explicit
-		dimension will still require measurement.
-
-		Calls `saveMeasurements()` to set up the `actualWidth` and
-		`actualHeight` member variables used for layout.
-
-		Meant for internal use, and subclasses may override this function with a
-		custom implementation.
-
-		@see `FeathersControl.saveMeasurements()`
-		@see `FeathersControl.explicitWidth`
-		@see `FeathersControl.explicitHeight`
-		@see `FeathersControl.actualWidth`
-		@see `FeathersControl.actualHeight`
-
-		@since 1.0.0
-	**/
-	@:dox(show)
-	private function autoSizeIfNeeded():Bool {
+	private function measure():Bool {
 		var needsWidth = this.explicitWidth == null;
 		var needsHeight = this.explicitHeight == null;
 		var needsMinWidth = this.explicitMinWidth == null;
@@ -215,11 +190,7 @@ class BaseNavigator extends FeathersControl {
 			return false;
 		}
 
-		if (this.activeItemView != null) {
-			this._activeViewMeasurements.resetTargetFluidlyForParent(this.activeItemView, this);
-		}
-
-		var needsToMeasureContent = this.autoSizeMode == AutoSizeMode.CONTENT || this.stage == null;
+		var needsToMeasureContent = this.autoSizeMode == CONTENT || this.stage == null;
 		var stageWidth:Float = 0.0;
 		var stageHeight:Float = 0.0;
 		if (!needsToMeasureContent) {
@@ -235,6 +206,24 @@ class BaseNavigator extends FeathersControl {
 			measureView = cast(this.activeItemView, IMeasureObject);
 		}
 
+		if (this.activeItemView != null) {
+			if (needsToMeasureContent) {
+				MeasurementsUtil.resetFluidlyWithParent(this._activeViewMeasurements, this.activeItemView, this);
+			}
+			// optimization: pass down explicit width and height to active view
+			// as soon as possible to avoid expensive validation measurement
+			if (!needsWidth && this.activeItemView.width != this.explicitWidth) {
+				this.activeItemView.width = this.explicitWidth;
+			} else if (!needsToMeasureContent && this.activeItemView.width != stageWidth) {
+				this.activeItemView.width = stageWidth;
+			}
+			if (!needsHeight && this.activeItemView.height != this.explicitHeight) {
+				this.activeItemView.height = this.explicitHeight;
+			} else if (!needsToMeasureContent && this.activeItemView.height != stageHeight) {
+				this.activeItemView.height = stageHeight;
+			}
+		}
+
 		if (Std.is(this.activeItemView, IValidating)) {
 			cast(this.activeItemView, IValidating).validateNow();
 		}
@@ -245,7 +234,7 @@ class BaseNavigator extends FeathersControl {
 				if (this.activeItemView != null) {
 					newWidth = this.activeItemView.width;
 				} else {
-					newWidth = 0;
+					newWidth = 0.0;
 				}
 			} else {
 				newWidth = stageWidth;
@@ -258,7 +247,7 @@ class BaseNavigator extends FeathersControl {
 				if (this.activeItemView != null) {
 					newHeight = this.activeItemView.height;
 				} else {
-					newHeight = 0;
+					newHeight = 0.0;
 				}
 			} else {
 				newHeight = stageHeight;
@@ -273,7 +262,7 @@ class BaseNavigator extends FeathersControl {
 				} else if (this.activeItemView != null) {
 					newMinWidth = this.activeItemView.width;
 				} else {
-					newMinWidth = 0;
+					newMinWidth = 0.0;
 				}
 			} else {
 				newMinWidth = stageWidth;
@@ -288,7 +277,7 @@ class BaseNavigator extends FeathersControl {
 				} else if (this.activeItemView != null) {
 					newMinHeight = this.activeItemView.height;
 				} else {
-					newMinHeight = 0;
+					newMinHeight = 0.0;
 				}
 			} else {
 				newMinHeight = stageHeight;
@@ -390,7 +379,9 @@ class BaseNavigator extends FeathersControl {
 		return item;
 	}
 
-	private function showItemInternal(id:String, transition:DisplayObject->DisplayObject->IEffectContext, ?properties:Map<String, Dynamic>):DisplayObject {
+	private function prepareActiveItemView():Void {}
+
+	private function showItemInternal(id:String, transition:(DisplayObject, DisplayObject) -> IEffectContext):DisplayObject {
 		if (!this.hasItem(id)) {
 			throw new ArgumentError('Item with id \'$id\' cannot be displayed because this id has not been added.');
 		}
@@ -412,18 +403,8 @@ class BaseNavigator extends FeathersControl {
 		if (this.activeItemView == null) {
 			throw new IllegalOperationError('Failed to display navigator item with id \'$id\'. Call to getView() incorrectly returned null.');
 		}
-		if (properties != null) {
-			for (propertyName in properties.keys()) {
-				var propertyValue = properties.get(propertyName);
-				Reflect.setField(this.activeItemView, propertyName, propertyValue);
-			}
-		}
-		if (Std.is(this.activeItemView, INavigatorView)) {
-			var navigatorView = cast(this.activeItemView, INavigatorView);
-			navigatorView.navigatorItemID = id;
-			navigatorView.navigatorOwner = this;
-		}
-		if (this.autoSizeMode == AutoSizeMode.CONTENT || this.stage == null) {
+		this.prepareActiveItemView();
+		if (this.autoSizeMode == CONTENT || this.stage == null) {
 			this.activeItemView.addEventListener(Event.RESIZE, activeItemView_resizeHandler);
 		}
 		var sameInstance = this._previousViewInTransition == this.activeItemView;
@@ -459,7 +440,7 @@ class BaseNavigator extends FeathersControl {
 		return this.activeItemView;
 	}
 
-	private function clearActiveItemInternal(?transition:DisplayObject->DisplayObject->IEffectContext):Void {
+	private function clearActiveItemInternal(?transition:(DisplayObject, DisplayObject) -> IEffectContext):Void {
 		if (this.activeItemView == null) {
 			// nothing to clear
 			return;
@@ -484,7 +465,7 @@ class BaseNavigator extends FeathersControl {
 		this.startTransition(transition);
 	}
 
-	private function startTransition(transition:DisplayObject->DisplayObject->IEffectContext):Void {
+	private function startTransition(transition:(DisplayObject, DisplayObject) -> IEffectContext):Void {
 		FeathersEvent.dispatch(this, FeathersEvent.TRANSITION_START);
 		if (transition != null && transition != defaultTransition) {
 			if (this.activeItemView != null) {
@@ -499,8 +480,10 @@ class BaseNavigator extends FeathersControl {
 			// see the comment in the listener for details.
 			this.addEventListener(Event.ENTER_FRAME, baseNavigator_transitionWait_enterFrameHandler);
 		} else {
-			// the view may have been hidden if the transition was delayed
-			this.activeItemView.visible = true;
+			if (this.activeItemView != null) {
+				// the view may have been hidden if the transition was delayed
+				this.activeItemView.visible = true;
+			}
 			var transitionContext = defaultTransition(this._previousViewInTransition, this.activeItemView);
 			transitionContext.addEventListener(Event.COMPLETE, transition_completeHandler);
 			transitionContext.addEventListener(Event.CANCEL, transition_cancelHandler);
@@ -525,7 +508,7 @@ class BaseNavigator extends FeathersControl {
 	}
 
 	private function baseNavigator_addedToStageHandler(event:Event):Void {
-		if (this.autoSizeMode == AutoSizeMode.STAGE) {
+		if (this.autoSizeMode == STAGE) {
 			// if we validated before being added to the stage, or if we've
 			// been removed from stage and added again, we need to be sure
 			// that the new stage dimensions are accounted for.
@@ -558,7 +541,7 @@ class BaseNavigator extends FeathersControl {
 	}
 
 	private function activeItemView_resizeHandler(event:Event):Void {
-		if (this._validating || this.autoSizeMode != AutoSizeMode.CONTENT) {
+		if (this._validating || this.autoSizeMode != CONTENT) {
 			return;
 		}
 		this.setInvalid(InvalidationFlag.SIZE);
@@ -586,14 +569,15 @@ class BaseNavigator extends FeathersControl {
 		FeathersEvent.dispatch(this, FeathersEvent.TRANSITION_COMPLETE);
 
 		if (previousView != null) {
-			if (Std.is(previousView, INavigatorView)) {
-				var navigatorView = cast(previousView, INavigatorView);
-				navigatorView.navigatorItemID = null;
-				navigatorView.navigatorOwner = null;
-			}
 			previousView.removeEventListener(Event.RESIZE, activeItemView_resizeHandler);
 			this._viewsContainer.removeChild(previousView);
 			this.disposeView(previousItemID, previousView);
+		}
+
+		if (this.stage.focus == null || this.stage.focus.stage == null) {
+			if (Std.is(activeItemView, InteractiveObject)) {
+				this.stage.focus = cast(activeItemView, InteractiveObject);
+			}
 		}
 
 		this.transitionActive = false;
@@ -627,6 +611,12 @@ class BaseNavigator extends FeathersControl {
 		this._activeViewMeasurements.save(this.activeItemView);
 		FeathersEvent.dispatch(this, FeathersEvent.TRANSITION_CANCEL);
 		FeathersEvent.dispatch(this, Event.CHANGE);
+
+		if (this.stage.focus == null || this.stage.focus.stage == null) {
+			if (Std.is(this.activeItemView, InteractiveObject)) {
+				this.stage.focus = cast(this.activeItemView, InteractiveObject);
+			}
+		}
 
 		this.transitionActive = false;
 		var nextTransition = this._nextItemTransition;

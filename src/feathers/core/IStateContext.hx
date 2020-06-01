@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -17,11 +17,11 @@ import openfl.events.IEventDispatcher;
 
 	@since 1.0.0
 **/
-interface IStateContext extends IEventDispatcher {
+interface IStateContext<T> extends IEventDispatcher {
 	/**
 		The object's current state.
 
 		@since 1.0.0
 	**/
-	public var currentState(get, never):String;
+	public var currentState(get, never):T;
 }

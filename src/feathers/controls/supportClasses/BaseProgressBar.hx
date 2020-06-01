@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -34,18 +34,24 @@ class BaseProgressBar extends FeathersControl {
 		The value of the progress bar, which must be between the `minimum` and
 		the `maximum`.
 
-		In the following example, the value is changed to `12`:
+		When the `value` property changes, the progress bar will dispatch an event
+		of type `Event.CHANGE`.
+
+		In the following example, the value is changed to `12.0`:
 
 		```hx
-		progress.minimum = 0;
-		progress.maximum = 100;
-		progress.value = 12;
+		progress.minimum = 0.0;
+		progress.maximum = 100.0;
+		progress.value = 12.0;
 		```
 
-		@default 0
+		@default 0.0
 
 		@see `BaseProgressBar.minimum`
 		@see `BaseProgressBar.maximum`
+		@see `openfl.events.Event.CHANGE`
+
+		@since 1.0.0
 	**/
 	public var value(default, set):Float = 0.0;
 
@@ -64,16 +70,18 @@ class BaseProgressBar extends FeathersControl {
 
 		In the following example, the minimum is set to `-100`:
 
-		``` hx
+		```hx
 		progress.minimum = -100;
 		progress.maximum = 100;
-		progress.value = 50;</listing>
+		progress.value = 50;
 		```
 
-		@default 0
+		@default 0.0
 
 		@see `BaseProgressBar.value`
 		@see `BaseProgressBar.maximum`
+
+		@since 1.0.0
 	**/
 	public var minimum(default, set):Float = 0.0;
 
@@ -92,18 +100,20 @@ class BaseProgressBar extends FeathersControl {
 	/**
 		The progress bar's value cannot be larger than the maximum.
 
-		In the following example, the maximum is set to `100`:
+		In the following example, the maximum is set to `100.0`:
 
 		```hx
-		progress.minimum = 0;
-		progress.maximum = 100;
-		progress.value = 12;
+		progress.minimum = 0.0;
+		progress.maximum = 100.0;
+		progress.value = 12.0;
 		```
 
-		@default 1
+		@default 1.0
 
 		@see `BaseProgressBar.value`
 		@see `BaseProgressBar.minimum`
+
+		@since 1.0.0
 	**/
 	public var maximum(default, set):Float = 1.0;
 
@@ -132,7 +142,7 @@ class BaseProgressBar extends FeathersControl {
 		`width` and `height` properties are not set explicitly. The fill skin
 		and padding values will also be used.
 
-		If the background skin is a Feathers component, the `minWidth` or
+		If the background skin is a measurable component, the `minWidth` or
 		`minHeight` properties will be one of the values used to calculate the
 		width or height of the progress bar. If the background skin is a regular
 		OpenFL display object, the original width and height of the display
@@ -141,91 +151,78 @@ class BaseProgressBar extends FeathersControl {
 		In the following example, the progress bar is given a background skin:
 
 		```hx
-		progress.backgroundSkin = new Bitmap(bitmapData);
+		var skin = new RectangleSkin();
+		skin.fill = SolidColor(0xcccccc);
+		progress.backgroundSkin = skin;
 		```
 
-		@default null
+		@see `BaseProgressBar.disabledBackgroundSkin`
 
 		@since 1.0.0
 	**/
-	@style
-	public var backgroundSkin(default, set):DisplayObject = null;
+	@:style
+	public var backgroundSkin:DisplayObject = null;
 
-	private function set_backgroundSkin(value:DisplayObject):DisplayObject {
-		if (!this.setStyle("backgroundSkin")) {
-			return this.backgroundSkin;
-		}
-		if (this.backgroundSkin == value) {
-			return this.backgroundSkin;
-		}
-		if (this.backgroundSkin != null && this.backgroundSkin == this._currentBackgroundSkin) {
-			this.removeCurrentBackgroundSkin(this.backgroundSkin);
-			this._currentBackgroundSkin = null;
-		}
-		this.backgroundSkin = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.backgroundSkin;
-	}
+	/**
+		The background skin to display when the progress bar is disabled.
 
-	@style
-	public var backgroundDisabledSkin(default, set):DisplayObject = null;
+		In the following example, the progress bar is given a disabled
+		background skin:
 
-	private function set_backgroundDisabledSkin(value:DisplayObject):DisplayObject {
-		if (!this.setStyle("backgroundDisabledSkin")) {
-			return this.backgroundDisabledSkin;
-		}
-		if (this.backgroundDisabledSkin == value) {
-			return this.backgroundDisabledSkin;
-		}
-		if (this.backgroundDisabledSkin != null && this.backgroundDisabledSkin == this._currentBackgroundSkin) {
-			this.removeCurrentBackgroundSkin(this.backgroundDisabledSkin);
-			this._currentBackgroundSkin = null;
-		}
-		this.backgroundDisabledSkin = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.backgroundDisabledSkin;
-	}
+		```hx
+		var skin = new RectangleSkin();
+		skin.fill = SolidColor(0xdddddd);
+		progress.disabledBackgroundSkin = skin;
+
+		progress.enabled = false;
+		```
+
+		@see `BaseProgressBar.backgroundSkin`
+
+		@since 1.0.0
+	**/
+	@:style
+	public var disabledBackgroundSkin:DisplayObject = null;
 
 	private var _fillSkinMeasurements:Measurements = null;
 	private var _currentFillSkin:DisplayObject = null;
 
-	@style
-	public var fillSkin(default, set):DisplayObject = null;
+	/**
+		The primary fill to display in the progress bar. The fill skin is
+		rendered above the background skin, with padding around the edges of the
+		the fill skin to reveal the background skin behind.
 
-	private function set_fillSkin(value:DisplayObject):DisplayObject {
-		if (!this.setStyle("fillSkin")) {
-			return this.fillSkin;
-		}
-		if (this.fillSkin == value) {
-			return this.fillSkin;
-		}
-		if (this.fillSkin != null && this.fillSkin == this._currentFillSkin) {
-			this.removeCurrentFillSkin(this.fillSkin);
-			this._currentFillSkin = null;
-		}
-		this.fillSkin = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.fillSkin;
-	}
+		In the following example, the progress bar is given a fill skin:
 
-	@style
-	public var fillDisabledSkin(default, set):DisplayObject = null;
+		```hx
+		var skin = new RectangleSkin();
+		skin.fill = SolidColor(0xaaaaaa);
+		progress.fillSkin = skin;
+		```
 
-	private function set_fillDisabledSkin(value:DisplayObject):DisplayObject {
-		if (!this.setStyle("fillDisabledSkin")) {
-			return this.fillDisabledSkin;
-		}
-		if (this.fillDisabledSkin == value) {
-			return this.fillDisabledSkin;
-		}
-		if (this.fillDisabledSkin != null && this.fillDisabledSkin == this._currentFillSkin) {
-			this.removeCurrentFillSkin(this.fillDisabledSkin);
-			this._currentFillSkin = null;
-		}
-		this.fillDisabledSkin = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.fillDisabledSkin;
-	}
+		@since 1.0.0
+	**/
+	@:style
+	public var fillSkin:DisplayObject = null;
+
+	/**
+		The fill skin to display when the progress bar is disabled.
+
+		In the following example, the progress bar is given a disabled
+		fill skin:
+
+		```hx
+		var skin = new RectangleSkin();
+		skin.fill = SolidColor(0xcccccc);
+		progress.disabledFillSkin = skin;
+
+		progress.enabled = false;
+		```
+
+		@since 1.0.0
+	**/
+	@:style
+	public var disabledFillSkin:DisplayObject = null;
 
 	/**
 		The minimum space, in pixels, between the progress bar's top edge and the
@@ -235,27 +232,17 @@ class BaseProgressBar extends FeathersControl {
 		pixels:
 
 		```hx
-		progress.paddingTop = 20;</listing>
+		progress.paddingTop = 20.0;
 		```
 
-		@default 0
+		@see `BaseProgressBar.paddingBottom`
+		@see `BaseProgressBar.paddingRight`
+		@see `BaseProgressBar.paddingLeft`
 
 		@since 1.0.0
 	**/
-	@style
-	public var paddingTop(default, set):Null<Float> = null;
-
-	private function set_paddingTop(value:Null<Float>):Null<Float> {
-		if (!this.setStyle("paddingTop")) {
-			return this.paddingTop;
-		}
-		if (this.paddingTop == value) {
-			return this.paddingTop;
-		}
-		this.paddingTop = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.paddingTop;
-	}
+	@:style
+	public var paddingTop:Float = 0.0;
 
 	/**
 		The minimum space, in pixels, between the progress bar's right edge and
@@ -265,27 +252,17 @@ class BaseProgressBar extends FeathersControl {
 		pixels:
 
 		```hx
-		progress.paddingRight = 20;</listing>
+		progress.paddingRight = 20.0;
 		```
 
-		@default 0
+		@see `BaseProgressBar.paddingTop`
+		@see `BaseProgressBar.paddingBottom`
+		@see `BaseProgressBar.paddingLeft`
 
 		@since 1.0.0
 	**/
-	@style
-	public var paddingRight(default, set):Null<Float> = null;
-
-	private function set_paddingRight(value:Null<Float>):Null<Float> {
-		if (!this.setStyle("paddingRight")) {
-			return this.paddingRight;
-		}
-		if (this.paddingRight == value) {
-			return this.paddingRight;
-		}
-		this.paddingRight = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.paddingRight;
-	}
+	@:style
+	public var paddingRight:Float = 0.0;
 
 	/**
 		The minimum space, in pixels, between the progress bar's bottom edge and
@@ -295,27 +272,17 @@ class BaseProgressBar extends FeathersControl {
 		pixels:
 
 		```hx
-		progress.paddingBottom = 20;</listing>
+		progress.paddingBottom = 20.0;
 		```
 
-		@default 0
+		@see `BaseProgressBar.paddingTop`
+		@see `BaseProgressBar.paddingRight`
+		@see `BaseProgressBar.paddingLeft`
 
 		@since 1.0.0
 	**/
-	@style
-	public var paddingBottom(default, set):Null<Float> = null;
-
-	private function set_paddingBottom(value:Null<Float>):Null<Float> {
-		if (!this.setStyle("paddingBottom")) {
-			return this.paddingBottom;
-		}
-		if (this.paddingBottom == value) {
-			return this.paddingBottom;
-		}
-		this.paddingBottom = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.paddingBottom;
-	}
+	@:style
+	public var paddingBottom:Float = 0.0;
 
 	/**
 		The minimum space, in pixels, between the progress bar's left edge and the
@@ -325,31 +292,17 @@ class BaseProgressBar extends FeathersControl {
 		pixels:
 
 		```hx
-		progress.paddingLeft = 20;</listing>
+		progress.paddingLeft = 20.0;
 		```
 
-		@default 0
+		@see `BaseProgressBar.paddingTop`
+		@see `BaseProgressBar.paddingBottom`
+		@see `BaseProgressBar.paddingRight`
 
 		@since 1.0.0
 	**/
-	@style
-	public var paddingLeft(default, set):Null<Float> = null;
-
-	private function set_paddingLeft(value:Null<Float>):Null<Float> {
-		if (!this.setStyle("paddingLeft")) {
-			return this.paddingLeft;
-		}
-		if (this.paddingLeft == value) {
-			return this.paddingLeft;
-		}
-		this.paddingLeft = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.paddingLeft;
-	}
-
-	private function autoSizeIfNeeded():Bool {
-		throw new TypeError("Missing override for 'autoSizeIfNeeded' in type " + Type.getClassName(Type.getClass(this)));
-	}
+	@:style
+	public var paddingLeft:Float = 0.0;
 
 	override private function update():Void {
 		var stylesInvalid = this.isInvalid(InvalidationFlag.STYLES);
@@ -360,8 +313,12 @@ class BaseProgressBar extends FeathersControl {
 			this.refreshFillSkin();
 		}
 
-		this.autoSizeIfNeeded();
+		this.measure();
 		this.layoutContent();
+	}
+
+	private function measure():Bool {
+		throw new TypeError("Missing override for 'measure' in type " + Type.getClassName(Type.getClass(this)));
 	}
 
 	private function refreshBackgroundSkin():Void {
@@ -387,8 +344,8 @@ class BaseProgressBar extends FeathersControl {
 	}
 
 	private function getCurrentBackgroundSkin():DisplayObject {
-		if (!this.enabled && this.backgroundDisabledSkin != null) {
-			return this.backgroundDisabledSkin;
+		if (!this.enabled && this.disabledBackgroundSkin != null) {
+			return this.disabledBackgroundSkin;
 		}
 		return this.backgroundSkin;
 	}
@@ -397,6 +354,7 @@ class BaseProgressBar extends FeathersControl {
 		if (skin == null) {
 			return;
 		}
+		this._backgroundSkinMeasurements.restore(skin);
 		if (skin.parent == this) {
 			// we need to restore these values so that they won't be lost the
 			// next time that this skin is used for measurement
@@ -427,8 +385,8 @@ class BaseProgressBar extends FeathersControl {
 	}
 
 	private function getCurrentFillSkin():DisplayObject {
-		if (!this.enabled && this.fillDisabledSkin != null) {
-			return this.fillDisabledSkin;
+		if (!this.enabled && this.disabledFillSkin != null) {
+			return this.disabledFillSkin;
 		}
 		return this.fillSkin;
 	}

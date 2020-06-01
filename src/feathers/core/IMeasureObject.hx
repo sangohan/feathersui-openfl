@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -14,101 +14,72 @@ package feathers.core;
 
 	@since 1.0.0
 **/
-interface IMeasureObject {
+interface IMeasureObject extends IDisplayObject {
 	/**
 		The object's explicit width value, or `null` if `width` is not set
 		explicitly.
 
-		@see `width`
-		@see `explicitHeight`
+		@see `IMeasureObject.explicitHeight`
 
 		@since 1.0.0
 	**/
-	public var explicitWidth(default, set):Null<Float>;
+	public var explicitWidth(get, never):Null<Float>;
 
 	/**
 		The object's explicit height value, or `null` if `height` is not set
 		explicitly.
 
-		@see `height`
-		@see `explicitWidth`
+		@see `IMeasureObject.explicitWidth`
 
 		@since 1.0.0
 	**/
-	public var explicitHeight(default, set):Null<Float>;
+	public var explicitHeight(get, never):Null<Float>;
 
 	/**
 		The object's explicit minimum width value, or `null` if `minWidth` is
 		not set explicitly.
 
-		@see `explicitMinHeight`
+		@see `IMeasureObject.explicitMinHeight`
 
 		@since 1.0.0
 	**/
-	public var explicitMinWidth(default, set):Null<Float>;
+	public var explicitMinWidth(get, never):Null<Float>;
 
 	/**
 		The object's explicit minimum height value, or `null` if `minHeight` is
 		not set explicitly.
 
-		@see `explicitMinWidth`
+		@see `IMeasureObject.explicitMinWidth`
 
 		@since 1.0.0
 	**/
-	public var explicitMinHeight(default, set):Null<Float>;
+	public var explicitMinHeight(get, never):Null<Float>;
 
 	/**
 		The object's explicit maximum width value, or `null` if `maxWidth` is
 		not set explicitly.
 
-		@see `explicitMaxWidth`
+		@see `IMeasureObject.explicitMaxWidth`
 
 		@since 1.0.0
 	**/
-	public var explicitMaxWidth(default, null):Null<Float>;
+	public var explicitMaxWidth(get, never):Null<Float>;
 
 	/**
 		The object's explicit maximum height value, or `null` if `maxHeight` is
 		not set explicitly.
 
-		@see `explicitMaxWidth`
+		@see `IMeasureObject.explicitMaxWidth`
 
 		@since 1.0.0
 	**/
-	public var explicitMaxHeight(default, null):Null<Float>;
-
-	#if flash
-	public var width:Float;
-	#else
-
-	/**
-		The object's width value.
-
-		@see `height`
-
-		@since 1.0.0
-	**/
-	public var width(get, set):Float;
-	#end
-
-	#if flash
-	public var height:Float;
-	#else
-
-	/**
-		The object's height value.
-
-		@see `width`
-
-		@since 1.0.0
-	**/
-	public var height(get, set):Float;
-	#end
+	public var explicitMaxHeight(get, never):Null<Float>;
 
 	/**
 		The object's minimum width value.
 
-		@see `minHeight`
+		@see `IMeasureObject.resetMinWidth`
+		@see `IMeasureObject.minHeight`
 
 		@since 1.0.0
 	**/
@@ -117,7 +88,8 @@ interface IMeasureObject {
 	/**
 		The object's minimum height value.
 
-		@see `minWidth`
+		@see `IMeasureObject.resetMinHeight`
+		@see `IMeasureObject.minWidth`
 
 		@since 1.0.0
 	**/
@@ -126,7 +98,8 @@ interface IMeasureObject {
 	/**
 		The object's maximum width value.
 
-		@see `maxHeight`
+		@see `IMeasureObject.resetMaxWidth`
+		@see `IMeasureObject.maxHeight`
 
 		@since 1.0.0
 	**/
@@ -135,9 +108,74 @@ interface IMeasureObject {
 	/**
 		The object's maximum height value.
 
-		@see `maxWidth`
+		@see `IMeasureObject.resetMaxHeight`
+		@see `IMeasureObject.maxWidth`
 
 		@since 1.0.0
 	**/
 	public var maxHeight(get, set):Float;
+
+	/**
+		Resets the width so that it will be calculated automatically by
+		the component.
+
+		@see `IMeasureObject.explicitWidth`
+
+		@since 1.0.0
+	**/
+	public function resetWidth():Void;
+
+	/**
+		Resets the height so that it will be calculated automatically by
+		the component.
+
+		@see `IMeasureObject.explicitHeight`
+
+		@since 1.0.0
+	**/
+	public function resetHeight():Void;
+
+	/**
+		Resets the minimum width so that it will be calculated automatically by
+		the component.
+
+		@see `IMeasureObject.minWidth`
+		@see `IMeasureObject.explicitMinWidth`
+
+		@since 1.0.0
+	**/
+	public function resetMinWidth():Void;
+
+	/**
+		Resets the minimum height so that it will be calculated automatically by
+		the component.
+
+		@see `IMeasureObject.minHeight`
+		@see `IMeasureObject.explicitMinHeight`
+
+		@since 1.0.0
+	**/
+	public function resetMinHeight():Void;
+
+	/**
+		Resets the minimum width so that it will be calculated automatically by
+		the component.
+
+		@see `IMeasureObject.maxWidth`
+		@see `IMeasureObject.explicitMaxWidth`
+
+		@since 1.0.0
+	**/
+	public function resetMaxWidth():Void;
+
+	/**
+		Resets the maximum height so that it will be calculated automatically by
+		the component.
+
+		@see `IMeasureObject.maxHeight`
+		@see `IMeasureObject.explicitMaxHeight`
+
+		@since 1.0.0
+	**/
+	public function resetMaxHeight():Void;
 }

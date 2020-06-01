@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -12,7 +12,7 @@ import motion.Actuate;
 
 /**
 	A wrapper around [Actuate](https://lib.haxe.org/p/actuate/) that is used to
-	create special actuators for custom Feathers effects.
+	create special actuators for custom Feathers UI effects.
 
 	In the following example, a custom effect is created with
 	`ActuateForEffects` and `ActuateEffectContext`:
@@ -28,7 +28,7 @@ import motion.Actuate;
 	@see `feathers.motion.effects.actuate.ActuateEffectContext`
 	@see [Actuate on Haxelib](https://lib.haxe.org/p/actuate/)
 	@see [@jgranick/actuate on Github](https://github.com/jgranick/actuate)
-	@see [Effects and animation for Feathers components](../../../help/effects.html)
+	@see [Effects and animation for Feathers UI components](https://feathersui.com/learn/haxe-openfl/effects-and-animation/)
 
 	@since 1.0.0
 **/

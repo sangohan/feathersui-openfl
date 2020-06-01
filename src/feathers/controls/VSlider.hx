@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -10,8 +10,10 @@ package feathers.controls;
 
 import feathers.controls.supportClasses.BaseSlider;
 import feathers.core.IValidating;
-import feathers.style.IStyleObject;
+import feathers.themes.steel.components.SteelVSliderStyles;
+import openfl.events.KeyboardEvent;
 import openfl.geom.Point;
+import openfl.ui.Keyboard;
 
 /**
 
@@ -22,27 +24,37 @@ import openfl.geom.Point;
 	changes:
 
 	```hx
-	var slider:VSlider = new VSlider();
-	slider.minimum = 0;
-	slider.maximum = 100;
-	slider.step = 1;
-	slider.value = 12;
-	slider.addEventListener( Event.CHANGE, slider_changeHandler );
-	this.addChild( slider );</listing>
+	var slider = new VSlider();
+	slider.minimum = 0.0;
+	slider.maximum = 100.0;
+	slider.step = 1.0;
+	slider.value = 12.0;
+	slider.addEventListener(Event.CHANGE, slider_changeHandler);
+	this.addChild(slider);
 	```
 
-	@see `feathers.controls.VSlider`
-	@see [How to use the Feathers `HSlider` and `VSlider` components](../../../help/slider.html)
+	@see [Tutorial: How to use the HSlider and VSlider components](https://feathersui.com/learn/haxe-openfl/slider/)
+	@see `feathers.controls.HSlider`
 
 	@since 1.0.0
 **/
+@:styleContext
 class VSlider extends BaseSlider {
+	/**
+		Creates a new `VSlider` object.
+
+		@since 1.0.0
+	**/
 	public function new() {
+		initializeVSliderTheme();
+
 		super();
+
+		this.addEventListener(KeyboardEvent.KEY_DOWN, vSlider_keyDownHandler);
 	}
 
-	override private function get_styleContext():Class<IStyleObject> {
-		return VSlider;
+	private function initializeVSliderTheme():Void {
+		SteelVSliderStyles.initialize();
 	}
 
 	override private function valueToLocation(value:Float):Float {
@@ -70,13 +82,13 @@ class VSlider extends BaseSlider {
 			trackScrollableHeight -= this.thumbSkin.height;
 		}
 		var yOffset = y - this._pointerStartY - this.maximumPadding;
-		var yPosition = Math.min(Math.max(0, this._thumbStartY + yOffset), trackScrollableHeight);
-		percentage = 1 - (yPosition / trackScrollableHeight);
+		var yPosition = Math.min(Math.max(0.0, this._thumbStartY + yOffset), trackScrollableHeight);
+		percentage = 1.0 - (yPosition / trackScrollableHeight);
 
 		return this.minimum + percentage * (this.maximum - this.minimum);
 	}
 
-	override private function autoSizeIfNeeded():Bool {
+	override private function measure():Bool {
 		var needsWidth = this.explicitWidth == null;
 		var needsHeight = this.explicitHeight == null;
 		var needsMinWidth = this.explicitMinWidth == null;
@@ -139,7 +151,7 @@ class VSlider extends BaseSlider {
 		var locationMinusHalfThumbHeight = location.y;
 		if (this.thumbSkin != null) {
 			trackHeightMinusThumbHeight -= this.thumbSkin.height;
-			locationMinusHalfThumbHeight -= this.thumbSkin.height / 2;
+			locationMinusHalfThumbHeight -= this.thumbSkin.height / 2.0;
 		}
 		this._thumbStartX = location.x;
 		this._thumbStartY = Math.min(trackHeightMinusThumbHeight - this.maximumPadding, Math.max(this.minimumPadding, locationMinusHalfThumbHeight));
@@ -151,10 +163,10 @@ class VSlider extends BaseSlider {
 			if (Std.is(this.thumbSkin, IValidating)) {
 				cast(this.thumbSkin, IValidating).validateNow();
 			}
-			location += Math.round(this.thumbSkin.height / 2);
+			location += Math.round(this.thumbSkin.height / 2.0);
 		}
 
-		this.secondaryTrackSkin.y = 0;
+		this.secondaryTrackSkin.y = 0.0;
 		this.secondaryTrackSkin.height = location;
 
 		this.trackSkin.y = location;
@@ -167,8 +179,8 @@ class VSlider extends BaseSlider {
 			cast(this.trackSkin, IValidating).validateNow();
 		}
 
-		this.secondaryTrackSkin.x = (this.actualWidth - this.secondaryTrackSkin.width) / 2;
-		this.trackSkin.x = (this.actualWidth - this.trackSkin.width) / 2;
+		this.secondaryTrackSkin.x = (this.actualWidth - this.secondaryTrackSkin.width) / 2.0;
+		this.trackSkin.x = (this.actualWidth - this.trackSkin.width) / 2.0;
 	}
 
 	override private function layoutSingleTrack():Void {
@@ -176,14 +188,14 @@ class VSlider extends BaseSlider {
 			return;
 		}
 
-		this.trackSkin.y = 0;
+		this.trackSkin.y = 0.0;
 		this.trackSkin.height = this.actualHeight;
 
 		if (Std.is(this.trackSkin, IValidating)) {
 			cast(this.trackSkin, IValidating).validateNow();
 		}
 
-		this.trackSkin.x = (this.actualWidth - this.trackSkin.width) / 2;
+		this.trackSkin.x = (this.actualWidth - this.trackSkin.width) / 2.0;
 	}
 
 	override private function layoutThumb():Void {
@@ -191,7 +203,25 @@ class VSlider extends BaseSlider {
 			return;
 		}
 		var thumbLocation = this.valueToLocation(this.value);
-		this.thumbSkin.x = Math.round((this.actualWidth - this.thumbSkin.width) / 2);
+		this.thumbSkin.x = Math.round((this.actualWidth - this.thumbSkin.width) / 2.0);
 		this.thumbSkin.y = thumbLocation;
+	}
+
+	private function vSlider_keyDownHandler(event:KeyboardEvent):Void {
+		var newValue = this.value;
+		switch (event.keyCode) {
+			case Keyboard.DOWN:
+				newValue -= this.step;
+			case Keyboard.UP:
+				newValue += this.step;
+			case Keyboard.HOME:
+				newValue = this.minimum;
+			case Keyboard.END:
+				newValue = this.maximum;
+			default:
+				return;
+		}
+		event.stopPropagation();
+		this.value = newValue;
 	}
 }

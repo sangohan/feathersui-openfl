@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -14,9 +14,10 @@ import openfl.events.Event;
 import feathers.utils.DisplayUtil;
 
 /**
-	A `openfl.display.Sprite` with a validation system where multiple property
-	changes may be queued up to be processed all at once. A performance
-	optimization for frequently changing user interfaces.
+	An [`openfl.display.Sprite`](https://api.openfl.org/openfl/display/Sprite.html)
+	with a validation system where multiple property changes may be queued up to
+	be processed all at once. A performance optimization for frequently changing
+	user interfaces.
 
 	@since 1.0.0
 **/
@@ -36,12 +37,7 @@ class ValidatingSprite extends Sprite implements IValidating {
 	private var _validationQueue:ValidationQueue = null;
 
 	/**
-		The object's depth in the display list, relative to the stage. If
-		the object isn't on the stage, its depth will be `-1`.
-
-		Used by the validation system to validate objects from the top down.
-
-		@since 1.0.0
+		@see `feathers.core.IValidating.depth`
 	**/
 	public var depth(default, null):Int = -1;
 
@@ -51,6 +47,13 @@ class ValidatingSprite extends Sprite implements IValidating {
 		specific flag, returns `true` only if that flag has been set (others may
 		be set too, but it checks the specific flag only. If all flags have been
 		marked as invalid, always returns `true`.
+
+		The following example invalidates a component:
+
+		```hx
+		component.setInvalid();
+		trace(component.isInvalid()); // true
+		```
 
 		@since 1.0.0
 	**/
@@ -77,6 +80,13 @@ class ValidatingSprite extends Sprite implements IValidating {
 		you might want to validate immediately if you need to access the
 		correct `width` or `height` values of the UI
 		control, since these values are calculated during validation.
+
+		The following example invalidates a component:
+
+		```hx
+		component.setInvalid();
+		trace(component.isInvalid()); // true
+		```
 
 		@since 1.0.0
 	**/
@@ -121,7 +131,8 @@ class ValidatingSprite extends Sprite implements IValidating {
 			// performance.
 			if (this._setInvalidCount >= 10) {
 				throw new IllegalOperationError(Type.getClassName(Type.getClass(this))
-					+ " returned to validation queue too many times during validation. This may be an infinite loop. Try to avoid doing anything that calls setInvalid() during validation.");
+					+
+					" returned to validation queue too many times during validation. This may be an infinite loop. Try to avoid doing anything that calls setInvalid() during validation.");
 			}
 			this._validationQueue.addControl(this);
 			return;
@@ -134,13 +145,7 @@ class ValidatingSprite extends Sprite implements IValidating {
 	}
 
 	/**
-		Immediately validates the display object, if it is invalid. The
-		validation system exists to postpone updating a display object after
-		properties are changed until until the last possible moment the
-		display object is rendered. This allows multiple properties to be
-		changed at a time without requiring a full update every time.
-
-		@since 1.0.0
+		@see `feathers.core.IValidating.validateNow`
 	**/
 	public function validateNow():Void {
 		// if we're not actually invalid, there's nothing to do here, so
@@ -192,6 +197,15 @@ class ValidatingSprite extends Sprite implements IValidating {
 		Override to customize layout and to adjust properties of children.
 		Called when the component validates, if any flags have been marked
 		to indicate that validation is pending.
+
+		The following example overrides updating after invalidation:
+
+		```hx
+		override private function update():Void {
+			super.update();
+
+		}
+		```
 
 		@since 1.0.0
 	**/

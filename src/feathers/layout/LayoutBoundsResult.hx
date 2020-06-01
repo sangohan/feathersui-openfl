@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -14,23 +14,28 @@ package feathers.layout;
 	@since 1.0.0
 **/
 class LayoutBoundsResult {
+	/**
+		Creates a new `LayoutBoundsResult` object.
+
+		@since 1.0.0
+	**/
 	public function new() {}
 
 	/**
 		The starting position of the view port's content on the x axis.
-		Usually, this value is `0`, but it may be negative, in some cases.
+		Usually, this value is `0.0`, but it may be negative, in some cases.
 
 		@since 1.0.0
 	**/
-	public var contentX:Float = 0;
+	public var contentX:Float = 0.0;
 
 	/**
 		The starting position of the view port's content on the y axis.
-		Usually, this value is `0`, but it may be negative, in some cases.
+		Usually, this value is `0.0`, but it may be negative, in some cases.
 
 		@since 1.0.0
 	**/
-	public var contentY:Float = 0;
+	public var contentY:Float = 0.0;
 
 	/**
 		The visible width of the view port. The view port's content may be

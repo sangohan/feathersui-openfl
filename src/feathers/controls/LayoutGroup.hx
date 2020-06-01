@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -8,8 +8,9 @@
 
 package feathers.controls;
 
+import feathers.utils.MeasurementsUtil;
+import feathers.themes.steel.components.SteelLayoutGroupStyles;
 import feathers.core.FeathersControl;
-import feathers.core.IMeasureObject;
 import feathers.core.InvalidationFlag;
 import feathers.core.IStateContext;
 import feathers.core.IStateObserver;
@@ -21,7 +22,6 @@ import feathers.layout.ILayout;
 import feathers.layout.ILayoutObject;
 import feathers.layout.LayoutBoundsResult;
 import feathers.layout.Measurements;
-import feathers.style.IStyleObject;
 import openfl.display.DisplayObject;
 import openfl.events.Event;
 import openfl.geom.Point;
@@ -34,60 +34,85 @@ import openfl.geom.Point;
 	adds two buttons to it:
 
 	```hx
-	var group:LayoutGroup = new LayoutGroup();
-	var layout:HorizontalLayout = new HorizontalLayout();
-	layout.gap = 20;
-	layout.padding = 20;
+	var group = new LayoutGroup();
+	var layout = new HorizontalLayout();
+	layout.gap = 20.0;
+	layout.padding = 20.0;
 	group.layout = layout;
-	this.addChild( group );
+	this.addChild(group);
 
-	var yesButton:Button = new Button();
-	yesButton.label = "Yes";
-	group.addChild( yesButton );
+	var yesButton = new Button();
+	yesButton.text = "Yes";
+	group.addChild(yesButton);
 
-	var noButton:Button = new Button();
-	noButton.label = "No";
-	group.addChild( noButton );</listing>
+	var noButton = new Button();
+	noButton.text = "No";
+	group.addChild(noButton);
 	```
 
-	@see [How to use the Feathers `LayoutGroup` component](../../../help/layout-group.html)
+	@see [Tutorial: How to use the LayoutGroup component](https://feathersui.com/learn/haxe-openfl/layout-group/)
 	@see `feathers.controls.ScrollContainer` is a layout container that supports scrolling
 
 	@since 1.0.0
 **/
+@defaultXmlProperty("xmlContent")
+@:styleContext
 class LayoutGroup extends FeathersControl {
+	/**
+		A variant used to style the group as a tool bar. Variants allow themes
+		to provide an assortment of different appearances for the same type of
+		UI component.
+
+		The following example uses this variant:
+
+		```hx
+		var group = new LayoutGroup();
+		group.variant = LayoutGroup.VARIANT_TOOL_BAR;
+		```
+
+		@see [Feathers UI User Manual: Themes](https://feathersui.com/learn/haxe-openfl/themes/)
+
+		@since 1.0.0
+	**/
 	public static final VARIANT_TOOL_BAR = "toolBar";
 
+	/**
+		Creates a new `LayoutGroup` object.
+
+		@since 1.0.0
+	**/
 	public function new() {
+		initializeLayoutGroupTheme();
+
 		super();
 		this.addEventListener(Event.ADDED_TO_STAGE, layoutGroup_addedToStageHandler);
 	}
 
-	override private function get_styleContext():Class<IStyleObject> {
-		return LayoutGroup;
-	}
-
 	private var items:Array<DisplayObject> = [];
 
-	@style
-	public var layout(default, set):ILayout = null;
+	/**
+		The layout algorithm used to position and size the group's items.
 
-	private function set_layout(value:ILayout):ILayout {
-		if (!this.setStyle("layout")) {
-			return this.layout;
-		}
-		if (this.layout == value) {
-			return this.layout;
-		}
-		this.layout = value;
-		this.setInvalid(InvalidationFlag.LAYOUT);
-		return this.layout;
-	}
+		The following example tells the group to use a vertical layout:
+
+		```hx
+		var layout = new VerticalLayout();
+		layout.gap = 20.0;
+		layout.padding = 20.0;
+		layout.horizontalAlign = CENTER;
+		group.layout = layout;
+		```
+
+		@since 1.0.0
+	**/
+	@:style
+	public var layout:ILayout = null;
 
 	private var _layoutResult:LayoutBoundsResult = new LayoutBoundsResult();
 	private var _layoutMeasurements:Measurements = new Measurements();
 	private var _ignoreChildChanges:Bool = false;
 	private var _ignoreChildChangesButSetFlags:Bool = false;
+	private var _ignoreLayoutChanges:Bool = false;
 	private var _currentBackgroundSkin:DisplayObject = null;
 	private var _backgroundSkinMeasurements:Measurements = null;
 
@@ -96,7 +121,8 @@ class LayoutGroup extends FeathersControl {
 		group. The background skin is resized to fill the complete width and
 		height of the group.
 
-		The following example gives the group a background skin:
+		The following example passes a bitmap for the layout group to use as a
+		background skin:
 
 		```hx
 		group.backgroundSkin = new Bitmap(bitmapData);
@@ -104,28 +130,12 @@ class LayoutGroup extends FeathersControl {
 
 		@default null
 
-		@see `LayoutGroup.backgroundDisabledSkin`
+		@see `LayoutGroup.disabledBackgroundSkin`
 
 		@since 1.0.0
 	**/
-	@style
-	public var backgroundSkin(default, set):DisplayObject = null;
-
-	private function set_backgroundSkin(value:DisplayObject):DisplayObject {
-		if (!this.setStyle("backgroundSkin")) {
-			return this.backgroundSkin;
-		}
-		if (this.backgroundSkin == value) {
-			return this.backgroundSkin;
-		}
-		if (this.backgroundSkin != null && this.backgroundSkin == this._currentBackgroundSkin) {
-			this.removeCurrentBackgroundSkin(this.backgroundSkin);
-			this._currentBackgroundSkin = null;
-		}
-		this.backgroundSkin = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.backgroundSkin;
-	}
+	@:style
+	public var backgroundSkin:DisplayObject = null;
 
 	/**
 		The default background skin to display behind all content added to the
@@ -135,7 +145,7 @@ class LayoutGroup extends FeathersControl {
 		The following example gives the group a disabled background skin:
 
 		```hx
-		group.backgroundDisabledSkin = new Bitmap(bitmapData);
+		group.disabledBackgroundSkin = new Bitmap(bitmapData);
 		group.enabled = false;
 		```
 
@@ -145,24 +155,8 @@ class LayoutGroup extends FeathersControl {
 
 		@since 1.0.0
 	**/
-	@style
-	public var backgroundDisabledSkin(default, set):DisplayObject = null;
-
-	private function set_backgroundDisabledSkin(value:DisplayObject):DisplayObject {
-		if (!this.setStyle("backgroundDisabledSkin")) {
-			return this.backgroundDisabledSkin;
-		}
-		if (this.backgroundDisabledSkin == value) {
-			return this.backgroundDisabledSkin;
-		}
-		if (this.backgroundDisabledSkin != null && this.backgroundDisabledSkin == this._currentBackgroundSkin) {
-			this.removeCurrentBackgroundSkin(this.backgroundDisabledSkin);
-			this._currentBackgroundSkin = null;
-		}
-		this.backgroundDisabledSkin = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.backgroundDisabledSkin;
-	}
+	@:style
+	public var disabledBackgroundSkin:DisplayObject = null;
 
 	/**
 		Determines how the layout group will set its own size when its
@@ -172,7 +166,7 @@ class LayoutGroup extends FeathersControl {
 		stage:
 
 		```hx
-		group.autoSizeMode = AutoSizeMode.STAGE;
+		group.autoSizeMode = STAGE;
 		```
 
 		Usually defaults to `AutoSizeMode.CONTENT`. However, if this component
@@ -184,7 +178,7 @@ class LayoutGroup extends FeathersControl {
 
 		@since 1.0.0
 	**/
-	public var autoSizeMode(default, set):AutoSizeMode = AutoSizeMode.CONTENT;
+	public var autoSizeMode(default, set):AutoSizeMode = CONTENT;
 
 	private function set_autoSizeMode(value:AutoSizeMode):AutoSizeMode {
 		if (this.autoSizeMode == value) {
@@ -193,7 +187,7 @@ class LayoutGroup extends FeathersControl {
 		this.autoSizeMode = value;
 		this.setInvalid(InvalidationFlag.SIZE);
 		if (this.stage != null) {
-			if (this.autoSizeMode == AutoSizeMode.STAGE) {
+			if (this.autoSizeMode == STAGE) {
 				this.stage.addEventListener(Event.RESIZE, layoutGroup_stage_resizeHandler);
 				this.addEventListener(Event.REMOVED_FROM_STAGE, layoutGroup_removedFromStageHandler);
 			} else {
@@ -202,6 +196,19 @@ class LayoutGroup extends FeathersControl {
 			}
 		}
 		return this.autoSizeMode;
+	}
+
+	private var _currentLayout:ILayout;
+
+	@:getter(numChildren)
+	#if !flash override #end private function get_numChildren():Int {
+		return this.items.length;
+	}
+
+	private var _numChildren(get, never):Int;
+
+	private function get__numChildren():Int {
+		return super.numChildren;
 	}
 
 	override public function addChildAt(child:DisplayObject, index:Int):DisplayObject {
@@ -216,8 +223,11 @@ class LayoutGroup extends FeathersControl {
 		if (oldIndex >= 0) {
 			this.items.remove(child);
 		}
-		var result = super.addChildAt(child, index);
+		index = this.getPrivateIndexForPublicIndex(index);
+		// insert into the array first, so that display list APIs work in an
+		// Event.ADDED listener
 		this.items.insert(index, child);
+		var result = this._addChildAt(child, index);
 		this.setInvalid(InvalidationFlag.LAYOUT);
 		return result;
 	}
@@ -228,8 +238,8 @@ class LayoutGroup extends FeathersControl {
 	}
 	#end
 
-	private function _addChild(child:DisplayObject, index:Int):DisplayObject {
-		return super.addChildAt(child, this.numChildren);
+	private function _addChild(child:DisplayObject):DisplayObject {
+		return super.addChildAt(child, this._numChildren);
 	}
 
 	private function _addChildAt(child:DisplayObject, index:Int):DisplayObject {
@@ -246,6 +256,10 @@ class LayoutGroup extends FeathersControl {
 		}
 		this.items.remove(child);
 		this.setInvalid(InvalidationFlag.LAYOUT);
+		return this._removeChild(child);
+	}
+
+	private function _removeChild(child:DisplayObject):DisplayObject {
 		return super.removeChild(child);
 	}
 
@@ -256,12 +270,76 @@ class LayoutGroup extends FeathersControl {
 		return null;
 	}
 
-	private function _removeChild(child:DisplayObject):DisplayObject {
-		return super.removeChild(child);
-	}
-
 	private function _removeChildAt(index:Int):DisplayObject {
 		return super.removeChildAt(index);
+	}
+
+	override public function getChildIndex(child:DisplayObject):Int {
+		return this.items.indexOf(child);
+	}
+
+	private function _getChildIndex(child:DisplayObject):Int {
+		return super.getChildIndex(child);
+	}
+
+	override public function setChildIndex(child:DisplayObject, index:Int):Void {
+		var oldIndex = this.getChildIndex(child);
+		if (oldIndex == index) {
+			// nothing to change
+			return;
+		}
+		this._setChildIndex(child, this.getPrivateIndexForPublicIndex(index));
+		this.items.remove(child);
+		this.items.insert(index, child);
+		this.setInvalid(InvalidationFlag.LAYOUT);
+	}
+
+	private function _setChildIndex(child:DisplayObject, index:Int):Void {
+		super.setChildIndex(child, index);
+	}
+
+	override public function getChildAt(index:Int):DisplayObject {
+		return this.items[index];
+	}
+
+	private function _getChildAt(index:Int):DisplayObject {
+		return super.getChildAt(index);
+	}
+
+	private function initializeLayoutGroupTheme():Void {
+		SteelLayoutGroupStyles.initialize();
+	}
+
+	private function getPrivateIndexForPublicIndex(publicIndex:Int):Int {
+		if (this.items.length > 0) {
+			return publicIndex + this._getChildIndex(this.items[0]);
+		} else if (this._numChildren > 0) {
+			return publicIndex + this._numChildren;
+		}
+		return publicIndex;
+	}
+
+	@:dox(hide)
+	@:noCompletion
+	public var xmlContent(default, set):Array<DisplayObject> = null;
+
+	private function set_xmlContent(value:Array<DisplayObject>):Array<DisplayObject> {
+		if (this.xmlContent == value) {
+			return this.xmlContent;
+		}
+		if (this.xmlContent != null) {
+			for (child in this.xmlContent) {
+				this.removeChild(child);
+			}
+		}
+		this.xmlContent = value;
+		if (this.xmlContent != null) {
+			for (child in this.xmlContent) {
+				this.addChild(child);
+			}
+		}
+		this.setInvalid(InvalidationFlag.STYLES);
+		return this.xmlContent;
 	}
 
 	override private function update():Void {
@@ -278,9 +356,13 @@ class LayoutGroup extends FeathersControl {
 			this.refreshBackgroundSkin();
 		}
 
+		if (stylesInvalid) {
+			this.refreshLayout();
+		}
+
 		if (sizeInvalid || layoutInvalid || stylesInvalid || stateInvalid) {
 			this.refreshViewPortBounds();
-			if (this.layout != null) {
+			if (this._currentLayout != null) {
 				this.handleCustomLayout();
 			} else {
 				this.handleManualLayout();
@@ -290,6 +372,20 @@ class LayoutGroup extends FeathersControl {
 
 			// final invalidation to avoid juggler next frame issues
 			this.validateChildren();
+		}
+	}
+
+	private function refreshLayout():Void {
+		var newLayout = this.layout;
+		if (this._currentLayout == newLayout) {
+			return;
+		}
+		if (this._currentLayout != null) {
+			this._currentLayout.removeEventListener(Event.CHANGE, layoutGroup_layout_changeHandler);
+		}
+		this._currentLayout = newLayout;
+		if (this._currentLayout != null) {
+			this._currentLayout.addEventListener(Event.CHANGE, layoutGroup_layout_changeHandler);
 		}
 	}
 
@@ -313,14 +409,14 @@ class LayoutGroup extends FeathersControl {
 			this._backgroundSkinMeasurements.save(this._currentBackgroundSkin);
 		}
 		if (Std.is(this, IStateContext) && Std.is(this._currentBackgroundSkin, IStateObserver)) {
-			cast(this._currentBackgroundSkin, IStateObserver).stateContext = cast(this, IStateContext);
+			cast(this._currentBackgroundSkin, IStateObserver).stateContext = cast(this, IStateContext<Dynamic>);
 		}
 		this._addChildAt(this._currentBackgroundSkin, 0);
 	}
 
 	private function getCurrentBackgroundSkin():DisplayObject {
-		if (!this.enabled && this.backgroundDisabledSkin != null) {
-			return this.backgroundDisabledSkin;
+		if (!this.enabled && this.disabledBackgroundSkin != null) {
+			return this.disabledBackgroundSkin;
 		}
 		return this.backgroundSkin;
 	}
@@ -332,6 +428,7 @@ class LayoutGroup extends FeathersControl {
 		if (Std.is(skin, IStateObserver)) {
 			cast(skin, IStateObserver).stateContext = null;
 		}
+		this._backgroundSkinMeasurements.restore(skin);
 		if (skin.parent == this) {
 			// we need to restore these values so that they won't be lost the
 			// next time that this skin is used for measurement
@@ -348,10 +445,13 @@ class LayoutGroup extends FeathersControl {
 		var needsMaxHeight = this.explicitMaxHeight == null;
 
 		if (this._currentBackgroundSkin != null) {
-			this._backgroundSkinMeasurements.resetTargetFluidlyForParent(this._currentBackgroundSkin, this);
+			MeasurementsUtil.resetFluidlyWithParent(this._backgroundSkinMeasurements, this._currentBackgroundSkin, this);
+			if (Std.is(this._currentBackgroundSkin, IValidating)) {
+				cast(this._currentBackgroundSkin, IValidating).validateNow();
+			}
 		}
 
-		var needsToMeasureContent = this.autoSizeMode == AutoSizeMode.CONTENT || this.stage == null;
+		var needsToMeasureContent = this.autoSizeMode == CONTENT || this.stage == null;
 		var stageWidth:Float = 0.0;
 		var stageHeight:Float = 0.0;
 		if (!needsToMeasureContent) {
@@ -376,11 +476,11 @@ class LayoutGroup extends FeathersControl {
 
 		var viewPortMinWidth = this.explicitMinWidth;
 		if (needsMinWidth) {
-			viewPortMinWidth = 0;
+			viewPortMinWidth = 0.0;
 		}
 		var viewPortMinHeight = this.explicitMinHeight;
 		if (needsMinHeight) {
-			viewPortMinHeight = 0;
+			viewPortMinHeight = 0.0;
 		}
 		var viewPortMaxWidth = this.explicitMaxWidth;
 		if (needsMaxWidth) {
@@ -411,18 +511,18 @@ class LayoutGroup extends FeathersControl {
 	private function handleCustomLayout():Void {
 		var oldIgnoreChildChanges = this._ignoreChildChanges;
 		this._ignoreChildChanges = true;
-		this.layout.layout(this.items, this._layoutMeasurements, this._layoutResult);
+		this._currentLayout.layout(this.items, this._layoutMeasurements, this._layoutResult);
 		this._ignoreChildChanges = oldIgnoreChildChanges;
 	}
 
 	private function handleManualLayout():Void {
 		var maxX = this._layoutMeasurements.width;
 		if (maxX == null) {
-			maxX = 0;
+			maxX = 0.0;
 		}
 		var maxY = this._layoutMeasurements.height;
 		if (maxY == null) {
-			maxY = 0;
+			maxY = 0.0;
 		}
 		var oldIgnoreChildChanges = this._ignoreChildChanges;
 		this._ignoreChildChanges = true;
@@ -443,8 +543,8 @@ class LayoutGroup extends FeathersControl {
 			}
 		}
 		this._ignoreChildChanges = oldIgnoreChildChanges;
-		this._layoutResult.contentX = 0;
-		this._layoutResult.contentY = 0;
+		this._layoutResult.contentX = 0.0;
+		this._layoutResult.contentY = 0.0;
 		this._layoutResult.contentWidth = maxX;
 		this._layoutResult.contentHeight = maxY;
 		if (this._layoutMeasurements.width != null) {
@@ -479,8 +579,8 @@ class LayoutGroup extends FeathersControl {
 		if (this._currentBackgroundSkin == null) {
 			return;
 		}
-		this._currentBackgroundSkin.x = 0;
-		this._currentBackgroundSkin.y = 0;
+		this._currentBackgroundSkin.x = 0.0;
+		this._currentBackgroundSkin.y = 0.0;
 
 		// don't set the width or height explicitly unless necessary because if
 		// our explicit dimensions are cleared later, the measurement may not be
@@ -508,7 +608,7 @@ class LayoutGroup extends FeathersControl {
 	}
 
 	private function layoutGroup_addedToStageHandler(event:Event):Void {
-		if (this.autoSizeMode == AutoSizeMode.STAGE) {
+		if (this.autoSizeMode == STAGE) {
 			// if we validated before being added to the stage, or if we've
 			// been removed from stage and added again, we need to be sure
 			// that the new stage dimensions are accounted for.
@@ -545,6 +645,13 @@ class LayoutGroup extends FeathersControl {
 		}
 		if (this._ignoreChildChangesButSetFlags) {
 			this.setInvalidationFlag(InvalidationFlag.LAYOUT);
+			return;
+		}
+		this.setInvalid(InvalidationFlag.LAYOUT);
+	}
+
+	private function layoutGroup_layout_changeHandler(event:Event):Void {
+		if (this._ignoreLayoutChanges) {
 			return;
 		}
 		this.setInvalid(InvalidationFlag.LAYOUT);

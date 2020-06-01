@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -8,50 +8,90 @@
 
 package feathers.controls;
 
-import feathers.layout.RelativePosition;
-import feathers.core.IUIControl;
-import feathers.core.IStateObserver;
-import openfl.display.DisplayObject;
-import feathers.layout.Measurements;
+import feathers.core.IFocusObject;
 import feathers.core.IMeasureObject;
-import feathers.core.InvalidationFlag;
+import feathers.core.IStateObserver;
+import feathers.core.ITextControl;
+import feathers.core.IUIControl;
 import feathers.core.IValidating;
+import feathers.core.InvalidationFlag;
 import feathers.layout.HorizontalAlign;
+import feathers.layout.Measurements;
+import feathers.layout.RelativePosition;
 import feathers.layout.VerticalAlign;
-import feathers.style.IStyleObject;
+import feathers.themes.steel.components.SteelToggleButtonStyles;
+import feathers.utils.MeasurementsUtil;
+import openfl.display.DisplayObject;
+import openfl.events.KeyboardEvent;
+import openfl.events.MouseEvent;
 import openfl.text.TextField;
 import openfl.text.TextFieldAutoSize;
 import openfl.text.TextFormat;
+import openfl.ui.Keyboard;
 
 /**
 	A button that may be selected and deselected when clicked.
 
-	The following example creates a toggle button, and listens for when its
-	selection changes:
+	The following example creates a toggle button, programmatically selects it,
+	and listens for when the selection changes:
 
 	```hx
-	var button:ToggleButton = new ToggleButton();
+	var button = new ToggleButton();
 	button.text = "Click Me";
-	button.addEventListener( Event.CHANGE, button_changeHandler );
-	this.addChild( button );
+	button.selected = true;
+	button.addEventListener(Event.CHANGE, (event) -> {
+		var button = cast(event.currentTarget, ToggleButton);
+		trace("toggle button changed: " + button.selected);
+	});
+	this.addChild(button);
 	```
 
-	@see [How to use the Feathers `ToggleButton` component](../../../help/toggle-button.html)
+	@see [Tutorial: How to use the ToggleButton component](https://feathersui.com/learn/haxe-openfl/toggle-button/)
 
 	@since 1.0.0
 **/
-class ToggleButton extends BasicToggleButton {
-	public function new() {
-		super();
-	}
+@:styleContext
+class ToggleButton extends BasicToggleButton implements ITextControl implements IFocusObject {
+	/**
+		Creates a new `ToggleButton` object.
 
-	override private function get_styleContext():Class<IStyleObject> {
-		return ToggleButton;
+		@since 1.0.0
+	**/
+	public function new() {
+		initializeToggleButtonTheme();
+
+		super();
+
+		this.addEventListener(KeyboardEvent.KEY_DOWN, toggleButton_keyDownHandler);
 	}
 
 	private var textField:TextField;
 
-	public var text(default, set):String;
+	private var _previousText:String = null;
+	private var _previousTextFormat:TextFormat = null;
+	private var _updatedTextStyles = false;
+
+	/**
+		The text displayed by the button.
+
+		The following example sets the button's text:
+
+		```hx
+		button.text = "Click Me";
+		```
+
+		@default null
+
+		@see `ToggleButton.textFormat`
+
+		@since 1.0.0
+	**/
+	@:isVar
+	public var text(get, set):String;
+
+	private function get_text():String {
+		return this.text;
+	}
 
 	private function set_text(value:String):String {
 		if (this.text == value) {
@@ -62,155 +102,270 @@ class ToggleButton extends BasicToggleButton {
 		return this.text;
 	}
 
-	private var _stateToIcon:Map<String, DisplayObject> = new Map();
+	private var _stateToIcon:Map<ToggleButtonState, DisplayObject> = new Map();
 	private var _iconMeasurements:Measurements = null;
 	private var _currentIcon:DisplayObject = null;
 	private var _ignoreIconResizes:Bool = false;
 
 	/**
+		The display object to use as the button's icon.
+
+		To render a different icon depending on the button's current state,
+		pass additional icons to `setIconForState()`.
+
+		The following example gives the button an icon:
+
+		```hx
+		button.icon = new Bitmap(bitmapData);
+		```
+
+		To change the position of the icon relative to the button's text, see
+		`iconPosition` and `gap`.
+
+		```hx
+		button.icon = new Bitmap(bitmapData);
+		button.iconPosition = RIGHT;
+		button.gap = 20.0;
+		```
+
+		@see `ToggleButton.getIconForState()`
+		@see `ToggleButton.setIconForState()`
+		@see `ToggleButton.iconPosition`
+		@see `ToggleButton.gap`
 
 		@since 1.0.0
 	**/
-	@style
-	public var icon(default, set):DisplayObject = null;
-
-	private function set_icon(value:DisplayObject):DisplayObject {
-		if (!this.setStyle("icon")) {
-			return this.icon;
-		}
-		if (this.icon == value) {
-			return this.icon;
-		}
-		if (this.icon != null && this.icon == this._currentIcon) {
-			this.removeCurrentIcon(this.icon);
-			this._currentIcon = null;
-		}
-		this.icon = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.icon;
-	}
+	@:style
+	public var icon:DisplayObject = null;
 
 	/**
+		The icon to display when the button is disabled, and no higher
+		priority icon was passed to `setIconForState()` for the button's current
+		state.
+
+		In the following example, the button's disabled icon is changed:
+
+		```hx
+		button.enabled = false;
+		button.disabledIcon = new Bitmap(bitmapData);
+		```
+
+		The next example sets a disabled icon, but also provides an icon for
+		the `ToggleButtonState.DISABLED(true)` state that will be used instead
+		of the disabled icon:
+
+		```hx
+		button.disabledIcon = new Bitmap(bitmapData);
+		button.setIconForState(ToggleButtonState.DISABLED(true), new Bitmap(bitmapData2));
+		```
+
+		Note: If the current state is `ToggleButtonState.DISABLED(true)`, and
+		both the `disabledIcon` and `selectedIcon` are set, the `disabledIcon`
+		takes precedence over the `selectedIcon`.
+
+		@see `ToggleButton.icon`
 
 		@since 1.0.0
 	**/
-	@style
-	public var selectedIcon(default, set):DisplayObject = null;
-
-	private function set_selectedIcon(value:DisplayObject):DisplayObject {
-		if (!this.setStyle("selectedIcon")) {
-			return this.selectedIcon;
-		}
-		if (this.selectedIcon == value) {
-			return this.selectedIcon;
-		}
-		if (this.selectedIcon != null && this.selectedIcon == this._currentIcon) {
-			this.removeCurrentIcon(this.selectedIcon);
-			this._currentIcon = null;
-		}
-		this.selectedIcon = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.selectedIcon;
-	}
-
-	@style
-	public var textFormat(default, set):TextFormat = null;
-
-	private function set_textFormat(value:TextFormat):TextFormat {
-		if (!this.setStyle("textFormat")) {
-			return this.textFormat;
-		}
-		if (this.textFormat == value) {
-			return this.textFormat;
-		}
-		this.textFormat = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.textFormat;
-	}
-
-	@style
-	public var disabledTextFormat(default, set):TextFormat = null;
-
-	private function set_disabledTextFormat(value:TextFormat):TextFormat {
-		if (!this.setStyle("disabledTextFormat")) {
-			return this.disabledTextFormat;
-		}
-		if (this.disabledTextFormat == value) {
-			return this.disabledTextFormat;
-		}
-		this.disabledTextFormat = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.disabledTextFormat;
-	}
-
-	@style
-	public var selectedTextFormat(default, set):TextFormat = null;
-
-	private function set_selectedTextFormat(value:TextFormat):TextFormat {
-		if (!this.setStyle("selectedTextFormat")) {
-			return this.selectedTextFormat;
-		}
-		if (this.selectedTextFormat == value) {
-			return this.selectedTextFormat;
-		}
-		this.selectedTextFormat = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.selectedTextFormat;
-	}
+	@:style
+	public var disabledIcon:DisplayObject = null;
 
 	/**
+		The icon to display when the button is selected, and no higher
+		priority icon was passed to `setIconForState()` for the button's current
+		state.
+
+		In the following example, the button's selected icon is changed:
+
+		```hx
+		button.selected = true;
+		button.selectedIcon = new Bitmap(bitmapData);
+		```
+
+		The next example sets a selected icon, but also provides an icon for
+		the `ToggleButtonState.DOWN(true)` state that will be used instead of
+		the selected icon:
+
+		```hx
+		button.selectedIcon = new Bitmap(bitmapData);
+		button.setIconForState(ToggleButtonState.DOWN(true), new Bitmap(bitmapData2));
+		```
+
+		Note: If the current state is `ToggleButtonState.DISABLED(true)`, and
+		both the `disabledIcon` and `selectedIcon` are set, the `disabledIcon`
+		takes precedence over the `selectedIcon`.
+
+		@see `ToggleButton.icon`
+		@see `BasicToggleButton.selected`
+
 		@since 1.0.0
 	**/
-	@style
-	public var iconPosition(default, set):Null<RelativePosition> = RelativePosition.LEFT;
-
-	private function set_iconPosition(value:Null<RelativePosition>):Null<RelativePosition> {
-		if (!this.setStyle("iconPosition")) {
-			return this.iconPosition;
-		}
-		if (this.iconPosition == value) {
-			return this.iconPosition;
-		}
-		this.iconPosition = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.iconPosition;
-	}
+	@:style
+	public var selectedIcon:DisplayObject = null;
 
 	/**
+		The font styles used to render the button's text.
+
+		In the following example, the button's text formatting is customized:
+
+		```hx
+		button.textFormat = new TextFormat("Helvetica", 20, 0xcc0000);
+		```
+
+		@see `ToggleButton.text`
+		@see `ToggleButton.getTextFormatForState()`
+		@see `ToggleButton.setTextFormatForState()`
+		@see `ToggleButton.embedFonts`
+
 		@since 1.0.0
 	**/
-	@style
-	public var gap(default, set):Null<Float> = null;
-
-	private function set_gap(value:Null<Float>):Null<Float> {
-		if (!this.setStyle("gap")) {
-			return this.gap;
-		}
-		if (this.gap == value) {
-			return this.gap;
-		}
-		this.gap = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.gap;
-	}
+	@:style
+	public var textFormat:TextFormat = null;
 
 	/**
+		Determines if an embedded font is used or not.
+
+		In the following example, the button uses embedded fonts:
+
+		```hx
+		button.embedFonts = true;
+		```
+
+		@see `ToggleButton.textFormat`
+
 		@since 1.0.0
 	**/
-	@style
-	public var minGap(default, set):Null<Float> = null;
+	@:style
+	public var embedFonts:Bool = false;
 
-	private function set_minGap(value:Null<Float>):Null<Float> {
-		if (!this.setStyle("minGap")) {
-			return this.minGap;
-		}
-		if (this.minGap == value) {
-			return this.minGap;
-		}
-		this.minGap = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.minGap;
-	}
+	/**
+		The font styles used to render the button's text when the button is
+		disabled.
+
+		In the following example, the button's disabled text formatting is
+		customized:
+
+		```hx
+		button.enabled = false;
+		button.disabledTextFormat = new TextFormat("Helvetica", 20, 0xee0000);
+		```
+
+		The next example sets a disabled text format, but also provides a text
+		format for the `ToggleButtonState.DISABLED(true)` state that will be
+		used instead of the disabled text format:
+
+		```hx
+		button.disabledTextFormat = new TextFormat("Helvetica", 20, 0xee0000);
+		button.setTextFormatForState(ToggleButtonState.DISABLED(true), new TextFormat("Helvetica", 20, 0xff0000));
+		```
+
+		Note: If the current state is `ToggleButtonState.DISABLED(true)`, and
+		both the `disabledTextFormat` and `selectedTextFormat` are set, the
+		`disabledTextFormat` takes precedence over the `selectedTextFormat`.
+
+		@see `ToggleButton.textFormat`
+
+		@since 1.0.0
+	**/
+	@:style
+	public var disabledTextFormat:TextFormat = null;
+
+	/**
+		The font styles used to render the button's text when the button is
+		selected.
+
+		In the following example, the button's selected text formatting is
+		customized:
+
+		```hx
+		button.selected = true;
+		button.selectedTextFormat = new TextFormat("Helvetica", 20, 0xff0000);
+		```
+
+		The next example sets a selected text format, but also provides a text
+		format for the `ToggleButtonState.DOWN(true)` state that will be used
+		instead of the selected text format:
+
+		```hx
+		button.selectedTextFormat = new TextFormat("Helvetica", 20, 0xff0000);
+		button.setTextFormatForState(ToggleButtonState.DOWN(true), new TextFormat("Helvetica", 20, 0xcc0000));
+		```
+
+		Note: If the current state is `ToggleButtonState.DISABLED(true)`, and
+		both the `disabledTextFormat` and `selectedTextFormat` are set, the
+		`disabledTextFormat` takes precedence over the `selectedTextFormat`.
+
+		@see `ToggleButton.textFormat`
+		@see `BasicToggleButton.selected`
+
+		@since 1.0.0
+	**/
+	@:style
+	public var selectedTextFormat:TextFormat = null;
+
+	/**
+		The location of the button's icon, relative to its text.
+
+		The following example positions the icon to the right of the text:
+
+		```hx
+		button.text = "Click Me";
+		button.icon = new Bitmap(texture);
+		button.iconPosition = RIGHT;
+		```
+
+		@see `ToggleButton.icon`
+
+		@since 1.0.0
+	**/
+	@:style
+	public var iconPosition:RelativePosition = LEFT;
+
+	/**
+		The space, measured in pixels, between the button's icon and its text.
+		Applies to either horizontal or vertical spacing, depending on the value
+		of `iconPosition`.
+
+		If the `gap` is set to `Math.POSITIVE_INFINITY`, the icon and the text
+		will be positioned as far apart as possible. In other words, they will
+		be positioned at the edges of the button (adjusted for padding).
+
+		The following example creates a gap of 20 pixels between the icon and
+		the text:
+
+		```hx
+		button.text = "Click Me";
+		button.icon = new Bitmap(bitmapData);
+		button.gap = 20.0;
+		```
+
+		@see `ToggleButton.minGap`
+
+		@since 1.0.0
+	**/
+	@:style
+	public var gap:Float = 0.0;
+
+	/**
+		If the value of the `gap` property is `Math.POSITIVE_INFINITY`, meaning
+		that the gap will fill as much space as possible and position the icon
+		and text on the edges of the button, the final calculated value of the
+		gap will not be smaller than the value of the `minGap` property.
+
+		The following example ensures that the gap is never smaller than 20
+		pixels:
+
+		```hx
+		button.gap = Math.POSITIVE_INFINITY;
+		button.minGap = 20.0;
+		```
+
+		@see `ToggleButton.gap`
+
+		@since 1.0.0
+	**/
+	@:style
+	public var minGap:Float = 0.0;
 
 	/**
 		The minimum space, in pixels, between the button's top edge and the
@@ -219,27 +374,15 @@ class ToggleButton extends BasicToggleButton {
 		In the following example, the button's top padding is set to 20 pixels:
 
 		```hx
-		button.paddingTop = 20;</listing>
+		button.paddingTop = 20.0;
 		```
 
-		@default 0
+		@default 0.0
 
 		@since 1.0.0
 	**/
-	@style
-	public var paddingTop(default, set):Null<Float> = null;
-
-	private function set_paddingTop(value:Null<Float>):Null<Float> {
-		if (!this.setStyle("paddingTop")) {
-			return this.paddingTop;
-		}
-		if (this.paddingTop == value) {
-			return this.paddingTop;
-		}
-		this.paddingTop = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.paddingTop;
-	}
+	@:style
+	public var paddingTop:Float = 0.0;
 
 	/**
 		The minimum space, in pixels, between the button's right edge and the
@@ -249,27 +392,15 @@ class ToggleButton extends BasicToggleButton {
 		pixels:
 
 		```hx
-		button.paddingRight = 20;</listing>
+		button.paddingRight = 20.0;
 		```
 
-		@default 0
+		@default 0.0
 
 		@since 1.0.0
 	**/
-	@style
-	public var paddingRight(default, set):Null<Float> = null;
-
-	private function set_paddingRight(value:Null<Float>):Null<Float> {
-		if (!this.setStyle("paddingRight")) {
-			return this.paddingRight;
-		}
-		if (this.paddingRight == value) {
-			return this.paddingRight;
-		}
-		this.paddingRight = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.paddingRight;
-	}
+	@:style
+	public var paddingRight:Float = 0.0;
 
 	/**
 		The minimum space, in pixels, between the button's bottom edge and the
@@ -279,27 +410,15 @@ class ToggleButton extends BasicToggleButton {
 		pixels:
 
 		```hx
-		button.paddingBottom = 20;</listing>
+		button.paddingBottom = 20.0;
 		```
 
-		@default 0
+		@default 0.0
 
 		@since 1.0.0
 	**/
-	@style
-	public var paddingBottom(default, set):Null<Float> = null;
-
-	private function set_paddingBottom(value:Null<Float>):Null<Float> {
-		if (!this.setStyle("paddingBottom")) {
-			return this.paddingBottom;
-		}
-		if (this.paddingBottom == value) {
-			return this.paddingBottom;
-		}
-		this.paddingBottom = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.paddingBottom;
-	}
+	@:style
+	public var paddingBottom:Float = 0.0;
 
 	/**
 		The minimum space, in pixels, between the button's left edge and the
@@ -309,27 +428,15 @@ class ToggleButton extends BasicToggleButton {
 		pixels:
 
 		```hx
-		button.paddingLeft = 20;</listing>
+		button.paddingLeft = 20.0;
 		```
 
-		@default 0
+		@default 0.0
 
 		@since 1.0.0
 	**/
-	@style
-	public var paddingLeft(default, set):Null<Float> = null;
-
-	private function set_paddingLeft(value:Null<Float>):Null<Float> {
-		if (!this.setStyle("paddingLeft")) {
-			return this.paddingLeft;
-		}
-		if (this.paddingLeft == value) {
-			return this.paddingLeft;
-		}
-		this.paddingLeft = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.paddingLeft;
-	}
+	@:style
+	public var paddingLeft:Float = 0.0;
 
 	/**
 		How the content is positioned horizontally (along the x-axis) within the
@@ -338,32 +445,18 @@ class ToggleButton extends BasicToggleButton {
 		The following example aligns the button's content to the left:
 
 		```hx
-		button.verticalAlign = HorizontalAlign.LEFT;
+		button.verticalAlign = LEFT;
 		```
 
 		**Note:** The `HorizontalAlign.JUSTIFY` constant is not supported by this
 		component.
 
-		@default `feathers.layout.HorizontalAlign.MIDDLE`
-
-		@see `feathers.layout.HorizontalAlign.TOP`
-		@see `feathers.layout.HorizontalAlign.MIDDLE`
-		@see `feathers.layout.HorizontalAlign.BOTTOM`
+		@see `feathers.layout.HorizontalAlign.LEFT`
+		@see `feathers.layout.HorizontalAlign.CENTER`
+		@see `feathers.layout.HorizontalAlign.RIGHT`
 	**/
-	@style
-	public var horizontalAlign(default, set):HorizontalAlign = null;
-
-	private function set_horizontalAlign(value:HorizontalAlign):HorizontalAlign {
-		if (!this.setStyle("horizontalAlign")) {
-			return this.horizontalAlign;
-		}
-		if (this.horizontalAlign == value) {
-			return this.horizontalAlign;
-		}
-		this.horizontalAlign = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.horizontalAlign;
-	}
+	@:style
+	public var horizontalAlign:HorizontalAlign = CENTER;
 
 	/**
 		How the content is positioned vertically (along the y-axis) within the
@@ -372,36 +465,22 @@ class ToggleButton extends BasicToggleButton {
 		The following example aligns the button's content to the top:
 
 		```hx
-		button.verticalAlign = VerticalAlign.TOP;
+		button.verticalAlign = TOP;
 		```
 
 		**Note:** The `VerticalAlign.JUSTIFY` constant is not supported by this
 		component.
 
-		@default `feathers.layout.VerticalAlign.MIDDLE`
-
 		@see `feathers.layout.VerticalAlign.TOP`
 		@see `feathers.layout.VerticalAlign.MIDDLE`
 		@see `feathers.layout.VerticalAlign.BOTTOM`
 	**/
-	@style
-	public var verticalAlign(default, set):VerticalAlign = null;
-
-	private function set_verticalAlign(value:VerticalAlign):VerticalAlign {
-		if (!this.setStyle("verticalAlign")) {
-			return this.verticalAlign;
-		}
-		if (this.verticalAlign == value) {
-			return this.verticalAlign;
-		}
-		this.verticalAlign = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.verticalAlign;
-	}
+	@:style
+	public var verticalAlign:VerticalAlign = MIDDLE;
 
 	private var _textMeasuredWidth:Float;
 	private var _textMeasuredHeight:Float;
-	private var _stateToTextFormat:Map<String, TextFormat> = new Map();
+	private var _stateToTextFormat:Map<ToggleButtonState, TextFormat> = new Map();
 
 	/**
 		Gets the text format to be used by the button when its `currentState`
@@ -409,9 +488,10 @@ class ToggleButton extends BasicToggleButton {
 
 		If a text format is not defined for a specific state, returns `null`.
 
-		@see `Button.textFormat`
-		@see `Button.setTextFormatForState()`
-		@see `Button.currentState`
+		@see `ToggleButton.setTextFormatForState()`
+		@see `ToggleButton.textFormat`
+		@see `ToggleButton.currentState`
+		@see `feathers.controls.ToggleButtonState`
 
 		@since 1.0.0
 	**/
@@ -426,9 +506,10 @@ class ToggleButton extends BasicToggleButton {
 		If a text format is not defined for a specific state, the value of the
 		`textFormat` property will be used instead.
 
-		@see `Button.textFormat`
-		@see `Button.getTextFormatForState()`
-		@see `Button.currentState`
+		@see `ToggleButton.getTextFormatForState()`
+		@see `ToggleButton.textFormat`
+		@see `ToggleButton.currentState`
+		@see `feathers.controls.ToggleButtonState`
 
 		@since 1.0.0
 	**/
@@ -446,13 +527,34 @@ class ToggleButton extends BasicToggleButton {
 	}
 
 	/**
+		Gets the icon to be used by the button when its `currentState` property
+		matches the specified state value.
+
+		If an icon is not defined for a specific state, returns `null`.
+
+		@see `ToggleButton.setIconForState()`
+		@see `ToggleButton.icon`
+		@see `ToggleButton.currentState`
+		@see `feathers.controls.ToggleButtonState`
+
 		@since 1.0.0
 	**/
-	public function getSkinForIcon(state:ToggleButtonState):DisplayObject {
+	public function getIconForState(state:ToggleButtonState):DisplayObject {
 		return this._stateToIcon.get(state);
 	}
 
 	/**
+		Set the icon to be used by the button when its `currentState` property
+		matches the specified state value.
+
+		If an icon is not defined for a specific state, the value of the
+		`textFormat` property will be used instead.
+
+		@see `ToggleButton.getIconForState()`
+		@see `ToggleButton.icon`
+		@see `ToggleButton.currentState`
+		@see `feathers.controls.ToggleButtonState`
+
 		@since 1.0.0
 	**/
 	@style
@@ -473,6 +575,10 @@ class ToggleButton extends BasicToggleButton {
 		this.setInvalid(InvalidationFlag.STYLES);
 	}
 
+	private function initializeToggleButtonTheme():Void {
+		SteelToggleButtonStyles.initialize();
+	}
+
 	override private function initialize():Void {
 		super.initialize();
 		if (this.textField == null) {
@@ -484,12 +590,16 @@ class ToggleButton extends BasicToggleButton {
 
 	override private function update():Void {
 		var dataInvalid = this.isInvalid(InvalidationFlag.DATA);
-		var stylesInvalid = this.isInvalid(InvalidationFlag.STYLES);
 		var stateInvalid = this.isInvalid(InvalidationFlag.STATE);
-		var sizeInvalid = this.isInvalid(InvalidationFlag.SIZE);
+		var stylesInvalid = this.isInvalid(InvalidationFlag.STYLES);
+
+		this._updatedTextStyles = false;
 
 		if (stylesInvalid || stateInvalid) {
 			this.refreshIcon();
+		}
+
+		if (stylesInvalid || stateInvalid) {
 			this.refreshTextStyles();
 		}
 
@@ -499,12 +609,10 @@ class ToggleButton extends BasicToggleButton {
 
 		super.update();
 
-		if (stylesInvalid || stateInvalid || dataInvalid || sizeInvalid) {
-			this.layoutContent();
-		}
+		this.layoutContent();
 	}
 
-	override private function autoSizeIfNeeded():Bool {
+	override private function measure():Bool {
 		var needsWidth = this.explicitWidth == null;
 		var needsHeight = this.explicitHeight == null;
 		var needsMinWidth = this.explicitMinWidth == null;
@@ -521,7 +629,7 @@ class ToggleButton extends BasicToggleButton {
 		}
 
 		if (this._currentBackgroundSkin != null) {
-			this._backgroundSkinMeasurements.resetTargetFluidlyForParent(this._currentBackgroundSkin, this);
+			MeasurementsUtil.resetFluidlyWithParent(this._backgroundSkinMeasurements, this._currentBackgroundSkin, this);
 		}
 
 		var measureSkin:IMeasureObject = null;
@@ -537,17 +645,9 @@ class ToggleButton extends BasicToggleButton {
 			cast(this._currentIcon, IValidating).validateNow();
 		}
 
-		// uninitialized styles need some defaults
-		var paddingTop = this.paddingTop != null ? this.paddingTop : 0.0;
-		var paddingRight = this.paddingRight != null ? this.paddingRight : 0.0;
-		var paddingBottom = this.paddingBottom != null ? this.paddingBottom : 0.0;
-		var paddingLeft = this.paddingLeft != null ? this.paddingLeft : 0.0;
-		var gap = this.gap != null ? this.gap : 0.0;
-		var minGap = this.minGap != null ? this.minGap : 0.0;
-
-		var adjustedGap = gap;
+		var adjustedGap = this.gap;
 		if (adjustedGap == Math.POSITIVE_INFINITY) {
-			adjustedGap = minGap;
+			adjustedGap = this.minGap;
 		}
 
 		var newWidth = this.explicitWidth;
@@ -555,15 +655,19 @@ class ToggleButton extends BasicToggleButton {
 			if (hasText) {
 				newWidth = this._textMeasuredWidth;
 			} else {
-				newWidth = 0;
+				newWidth = 0.0;
 			}
-			if (this._currentIcon != null && (this.iconPosition == RelativePosition.LEFT || this.iconPosition == RelativePosition.RIGHT)) {
-				if (hasText) {
-					newWidth += adjustedGap;
+			if (this._currentIcon != null) {
+				if (this.iconPosition == LEFT || this.iconPosition == RIGHT) {
+					if (hasText) {
+						newWidth += adjustedGap;
+					}
+					newWidth += this._currentIcon.width;
+				} else if (this.iconPosition == TOP || this.iconPosition == BOTTOM) {
+					newWidth = Math.max(newWidth, this._currentIcon.width);
 				}
-				newWidth += this._currentIcon.width;
 			}
-			newWidth += paddingLeft + paddingRight;
+			newWidth += this.paddingLeft + this.paddingRight;
 			if (this._currentBackgroundSkin != null) {
 				newWidth = Math.max(this._currentBackgroundSkin.width, newWidth);
 			}
@@ -574,15 +678,19 @@ class ToggleButton extends BasicToggleButton {
 			if (hasText) {
 				newHeight = this._textMeasuredHeight;
 			} else {
-				newHeight = 0;
+				newHeight = 0.0;
 			}
-			if (this._currentIcon != null && (this.iconPosition == RelativePosition.TOP || this.iconPosition == RelativePosition.BOTTOM)) {
-				if (hasText) {
-					newHeight += adjustedGap;
+			if (this._currentIcon != null) {
+				if (this.iconPosition == TOP || this.iconPosition == BOTTOM) {
+					if (hasText) {
+						newHeight += adjustedGap;
+					}
+					newHeight += this._currentIcon.height;
+				} else if (this.iconPosition == LEFT || this.iconPosition == RIGHT) {
+					newHeight = Math.max(newHeight, this._currentIcon.height);
 				}
-				newHeight += this._currentIcon.height;
 			}
-			newHeight += paddingTop + paddingBottom;
+			newHeight += this.paddingTop + this.paddingBottom;
 			if (this._currentBackgroundSkin != null) {
 				newHeight = Math.max(this._currentBackgroundSkin.height, newHeight);
 			}
@@ -590,7 +698,22 @@ class ToggleButton extends BasicToggleButton {
 
 		var newMinWidth = this.explicitMinWidth;
 		if (needsMinWidth) {
-			newMinWidth = this._textMeasuredWidth + paddingLeft + paddingRight;
+			if (hasText) {
+				newMinWidth = this._textMeasuredWidth;
+			} else {
+				newMinWidth = 0.0;
+			}
+			if (this._currentIcon != null) {
+				if (this.iconPosition == LEFT || this.iconPosition == RIGHT) {
+					if (hasText) {
+						newMinWidth += adjustedGap;
+					}
+					newMinWidth += this._currentIcon.width;
+				} else if (this.iconPosition == TOP || this.iconPosition == BOTTOM) {
+					newMinWidth = Math.max(newMinWidth, this._currentIcon.width);
+				}
+			}
+			newMinWidth += this.paddingLeft + this.paddingRight;
 			if (measureSkin != null) {
 				newMinWidth = Math.max(measureSkin.minWidth, newMinWidth);
 			} else if (this._backgroundSkinMeasurements != null) {
@@ -600,7 +723,22 @@ class ToggleButton extends BasicToggleButton {
 
 		var newMinHeight = this.explicitMinHeight;
 		if (needsMinHeight) {
-			newMinHeight = this._textMeasuredHeight + paddingTop + paddingBottom;
+			if (hasText) {
+				newMinHeight = this._textMeasuredHeight;
+			} else {
+				newMinHeight = 0.0;
+			}
+			if (this._currentIcon != null) {
+				if (this.iconPosition == TOP || this.iconPosition == BOTTOM) {
+					if (hasText) {
+						newMinHeight += adjustedGap;
+					}
+					newMinHeight += this._currentIcon.height;
+				} else if (this.iconPosition == LEFT || this.iconPosition == RIGHT) {
+					newMinHeight = Math.max(newMinHeight, this._currentIcon.height);
+				}
+			}
+			newMinHeight += this.paddingTop + this.paddingBottom;
 			if (measureSkin != null) {
 				newMinHeight = Math.max(measureSkin.minHeight, newMinHeight);
 			} else if (this._backgroundSkinMeasurements != null) {
@@ -633,14 +771,29 @@ class ToggleButton extends BasicToggleButton {
 	}
 
 	private function refreshTextStyles():Void {
+		if (this.textField.embedFonts != this.embedFonts) {
+			this.textField.embedFonts = this.embedFonts;
+			this._updatedTextStyles = true;
+		}
 		var textFormat = this.getCurrentTextFormat();
+		if (textFormat == this._previousTextFormat) {
+			// nothing to refresh
+			return;
+		}
 		if (textFormat != null) {
 			this.textField.defaultTextFormat = textFormat;
+			this._updatedTextStyles = true;
+			this._previousTextFormat = textFormat;
 		}
 	}
 
 	private function refreshText():Void {
 		var hasText = this.text != null && this.text.length > 0;
+		this.textField.visible = hasText;
+		if (this.text == this._previousText && !this._updatedTextStyles) {
+			// nothing to refresh
+			return;
+		}
 		if (hasText) {
 			this.textField.text = this.text;
 		} else {
@@ -651,9 +804,9 @@ class ToggleButton extends BasicToggleButton {
 		this._textMeasuredHeight = this.textField.height;
 		this.textField.autoSize = TextFieldAutoSize.NONE;
 		if (!hasText) {
-			this.textField.text = this.text;
+			this.textField.text = "";
 		}
-		this.textField.visible = hasText;
+		this._previousText = this.text;
 	}
 
 	private function getCurrentTextFormat():TextFormat {
@@ -674,7 +827,7 @@ class ToggleButton extends BasicToggleButton {
 		this.refreshTextFieldDimensions(false);
 
 		var hasText = this.text != null && this.text.length > 0;
-		var iconIsInLayout = this._currentIcon != null && this.iconPosition != RelativePosition.MANUAL;
+		var iconIsInLayout = this._currentIcon != null && this.iconPosition != MANUAL;
 		if (hasText && iconIsInLayout) {
 			this.positionSingleChild(this.textField);
 			this.positionTextAndIcon();
@@ -696,50 +849,50 @@ class ToggleButton extends BasicToggleButton {
 			return;
 		}
 
-		// uninitialized styles need some defaults
-		var paddingTop = this.paddingTop != null ? this.paddingTop : 0.0;
-		var paddingRight = this.paddingRight != null ? this.paddingRight : 0.0;
-		var paddingBottom = this.paddingBottom != null ? this.paddingBottom : 0.0;
-		var paddingLeft = this.paddingLeft != null ? this.paddingLeft : 0.0;
-		var gap = this.gap != null ? this.gap : 0.0;
-		var minGap = this.minGap != null ? this.minGap : 0.0;
-
 		var calculatedWidth = this.actualWidth;
 		var calculatedHeight = this.actualHeight;
 		if (forMeasurement) {
-			calculatedWidth = this.explicitWidth;
-			if (explicitWidth == null) {
-				calculatedWidth = this.explicitMaxWidth;
+			calculatedWidth = 0.0;
+			var explicitCalculatedWidth = this.explicitWidth;
+			if (explicitCalculatedWidth == null) {
+				explicitCalculatedWidth = this.explicitMaxWidth;
 			}
-			calculatedHeight = this.explicitHeight;
-			if (explicitHeight == null) {
-				calculatedHeight = this.explicitMaxHeight;
+			if (explicitCalculatedWidth != null) {
+				calculatedWidth = explicitCalculatedWidth;
+			}
+			calculatedHeight = 0.0;
+			var explicitCalculatedHeight = this.explicitHeight;
+			if (explicitCalculatedHeight == null) {
+				explicitCalculatedHeight = this.explicitMaxHeight;
+			}
+			if (explicitCalculatedHeight != null) {
+				calculatedHeight = explicitCalculatedHeight;
 			}
 		}
-		calculatedWidth -= (paddingLeft + paddingRight);
-		calculatedHeight -= (paddingTop + paddingBottom);
+		calculatedWidth -= (this.paddingLeft + this.paddingRight);
+		calculatedHeight -= (this.paddingTop + this.paddingBottom);
 		if (this._currentIcon != null) {
-			var adjustedGap = gap;
+			var adjustedGap = this.gap;
 			if (adjustedGap == Math.POSITIVE_INFINITY) {
-				adjustedGap = minGap;
+				adjustedGap = this.minGap;
 			}
-			if (this.iconPosition == RelativePosition.LEFT || this.iconPosition == RelativePosition.RIGHT) {
+			if (this.iconPosition == LEFT || this.iconPosition == RIGHT) {
 				calculatedWidth -= (this._currentIcon.width + adjustedGap);
 			}
-			if (this.iconPosition == RelativePosition.TOP || this.iconPosition == RelativePosition.BOTTOM) {
+			if (this.iconPosition == TOP || this.iconPosition == BOTTOM) {
 				calculatedHeight -= (this._currentIcon.height + adjustedGap);
 			}
 		}
-		if (calculatedWidth < 0) {
-			calculatedWidth = 0;
+		if (calculatedWidth < 0.0) {
+			calculatedWidth = 0.0;
 		}
-		if (calculatedHeight < 0) {
-			calculatedHeight = 0;
+		if (calculatedHeight < 0.0) {
+			calculatedHeight = 0.0;
 		}
 		if (calculatedWidth > this._textMeasuredWidth) {
 			calculatedWidth = this._textMeasuredWidth;
 		}
-		if (calculatedHeight > this._textMeasuredWidth) {
+		if (calculatedHeight > this._textMeasuredHeight) {
 			calculatedHeight = this._textMeasuredHeight;
 		}
 		this.textField.width = calculatedWidth;
@@ -747,104 +900,91 @@ class ToggleButton extends BasicToggleButton {
 	}
 
 	private function positionSingleChild(displayObject:DisplayObject):Void {
-		// uninitialized styles need some defaults
-		var paddingTop = this.paddingTop != null ? this.paddingTop : 0.0;
-		var paddingRight = this.paddingRight != null ? this.paddingRight : 0.0;
-		var paddingBottom = this.paddingBottom != null ? this.paddingBottom : 0.0;
-		var paddingLeft = this.paddingLeft != null ? this.paddingLeft : 0.0;
-
-		if (this.horizontalAlign == HorizontalAlign.LEFT) {
-			displayObject.x = paddingLeft;
-		} else if (this.horizontalAlign == HorizontalAlign.RIGHT) {
-			displayObject.x = this.actualWidth - paddingRight - displayObject.width;
+		if (this.horizontalAlign == LEFT) {
+			displayObject.x = this.paddingLeft;
+		} else if (this.horizontalAlign == RIGHT) {
+			displayObject.x = this.actualWidth - this.paddingRight - displayObject.width;
 		} else // center
 		{
-			displayObject.x = paddingLeft + Math.round((this.actualWidth - paddingLeft - paddingRight - displayObject.width) / 2);
+			displayObject.x = this.paddingLeft + (this.actualWidth - this.paddingLeft - this.paddingRight - displayObject.width) / 2.0;
 		}
-		if (this.verticalAlign == VerticalAlign.TOP) {
-			displayObject.y = paddingTop;
-		} else if (this.verticalAlign == VerticalAlign.BOTTOM) {
-			displayObject.y = this.actualHeight - paddingBottom - displayObject.height;
+		if (this.verticalAlign == TOP) {
+			displayObject.y = this.paddingTop;
+		} else if (this.verticalAlign == BOTTOM) {
+			displayObject.y = this.actualHeight - this.paddingBottom - displayObject.height;
 		} else // middle
 		{
-			displayObject.y = paddingTop + Math.round((this.actualHeight - paddingTop - paddingBottom - displayObject.height) / 2);
+			displayObject.y = this.paddingTop + (this.actualHeight - this.paddingTop - this.paddingBottom - displayObject.height) / 2.0;
 		}
 	}
 
 	private function positionTextAndIcon():Void {
-		// uninitialized styles need some defaults
-		var paddingTop = this.paddingTop != null ? this.paddingTop : 0.0;
-		var paddingRight = this.paddingRight != null ? this.paddingRight : 0.0;
-		var paddingBottom = this.paddingBottom != null ? this.paddingBottom : 0.0;
-		var paddingLeft = this.paddingLeft != null ? this.paddingLeft : 0.0;
-		var gap = this.gap != null ? this.gap : 0.0;
-
-		if (this.iconPosition == RelativePosition.TOP) {
-			if (gap == Math.POSITIVE_INFINITY) {
-				this._currentIcon.y = paddingTop;
-				this.textField.y = this.actualHeight - paddingBottom - this.textField.height;
+		if (this.iconPosition == TOP) {
+			if (this.gap == Math.POSITIVE_INFINITY) {
+				this._currentIcon.y = this.paddingTop;
+				this.textField.y = this.actualHeight - this.paddingBottom - this.textField.height;
 			} else {
-				if (this.verticalAlign == VerticalAlign.TOP) {
-					this.textField.y += this._currentIcon.height + gap;
-				} else if (this.verticalAlign == VerticalAlign.MIDDLE) {
-					this.textField.y += Math.round((this._currentIcon.height + gap) / 2);
+				if (this.verticalAlign == TOP) {
+					this.textField.y += this._currentIcon.height + this.gap;
+				} else if (this.verticalAlign == MIDDLE) {
+					this.textField.y += (this._currentIcon.height + this.gap) / 2.0;
 				}
-				this._currentIcon.y = this.textField.y - this._currentIcon.height - gap;
+				this._currentIcon.y = this.textField.y - this._currentIcon.height - this.gap;
 			}
-		} else if (this.iconPosition == RelativePosition.RIGHT) {
-			if (gap == Math.POSITIVE_INFINITY) {
-				this.textField.x = paddingLeft;
-				this._currentIcon.x = this.actualWidth - paddingRight - this._currentIcon.width;
+		} else if (this.iconPosition == RIGHT) {
+			if (this.gap == Math.POSITIVE_INFINITY) {
+				this.textField.x = this.paddingLeft;
+				this._currentIcon.x = this.actualWidth - this.paddingRight - this._currentIcon.width;
 			} else {
-				if (this.horizontalAlign == HorizontalAlign.RIGHT) {
-					this.textField.x -= this._currentIcon.width + gap;
-				} else if (this.horizontalAlign == HorizontalAlign.CENTER) {
-					this.textField.x -= Math.round((this._currentIcon.width + gap) / 2);
+				if (this.horizontalAlign == RIGHT) {
+					this.textField.x -= this._currentIcon.width + this.gap;
+				} else if (this.horizontalAlign == CENTER) {
+					this.textField.x -= (this._currentIcon.width + this.gap) / 2.0;
 				}
-				this._currentIcon.x = this.textField.x + this.textField.width + gap;
+				this._currentIcon.x = this.textField.x + this.textField.width + this.gap;
 			}
-		} else if (this.iconPosition == RelativePosition.BOTTOM) {
-			if (gap == Math.POSITIVE_INFINITY) {
-				this.textField.y = paddingTop;
-				this._currentIcon.y = this.actualHeight - paddingBottom - this._currentIcon.height;
+		} else if (this.iconPosition == BOTTOM) {
+			if (this.gap == Math.POSITIVE_INFINITY) {
+				this.textField.y = this.paddingTop;
+				this._currentIcon.y = this.actualHeight - this.paddingBottom - this._currentIcon.height;
 			} else {
-				if (this.verticalAlign == VerticalAlign.BOTTOM) {
-					this.textField.y -= this._currentIcon.height + gap;
-				} else if (this.verticalAlign == VerticalAlign.MIDDLE) {
-					this.textField.y -= Math.round((this._currentIcon.height + gap) / 2);
+				if (this.verticalAlign == BOTTOM) {
+					this.textField.y -= this._currentIcon.height + this.gap;
+				} else if (this.verticalAlign == MIDDLE) {
+					this.textField.y -= (this._currentIcon.height + this.gap) / 2.0;
 				}
-				this._currentIcon.y = this.textField.y + this.textField.height + gap;
+				this._currentIcon.y = this.textField.y + this.textField.height + this.gap;
 			}
-		} else if (this.iconPosition == RelativePosition.LEFT) {
-			if (gap == Math.POSITIVE_INFINITY) {
-				this._currentIcon.x = paddingLeft;
-				this.textField.x = this.actualWidth - paddingRight - this.textField.width;
+		} else if (this.iconPosition == LEFT) {
+			if (this.gap == Math.POSITIVE_INFINITY) {
+				this._currentIcon.x = this.paddingLeft;
+				this.textField.x = this.actualWidth - this.paddingRight - this.textField.width;
 			} else {
-				if (this.horizontalAlign == HorizontalAlign.LEFT) {
-					this.textField.x += gap + this._currentIcon.width;
-				} else if (this.horizontalAlign == HorizontalAlign.CENTER) {
-					this.textField.x += Math.round((gap + this._currentIcon.width) / 2);
+				if (this.horizontalAlign == LEFT) {
+					this.textField.x += this.gap + this._currentIcon.width;
+				} else if (this.horizontalAlign == CENTER) {
+					this.textField.x += (this.gap + this._currentIcon.width) / 2.0;
 				}
-				this._currentIcon.x = this.textField.x - gap - this._currentIcon.width;
+				this._currentIcon.x = this.textField.x - this.gap - this._currentIcon.width;
 			}
 		}
 
-		if (this.iconPosition == RelativePosition.LEFT || this.iconPosition == RelativePosition.RIGHT) {
-			if (this.verticalAlign == VerticalAlign.TOP) {
-				this._currentIcon.y = paddingTop;
-			} else if (this.verticalAlign == VerticalAlign.BOTTOM) {
-				this._currentIcon.y = this.actualHeight - paddingBottom - this._currentIcon.height;
+		if (this.iconPosition == LEFT || this.iconPosition == RIGHT) {
+			if (this.verticalAlign == TOP) {
+				this._currentIcon.y = this.paddingTop;
+			} else if (this.verticalAlign == BOTTOM) {
+				this._currentIcon.y = this.actualHeight - this.paddingBottom - this._currentIcon.height;
 			} else {
-				this._currentIcon.y = paddingTop + Math.round((this.actualHeight - paddingTop - paddingBottom - this._currentIcon.height) / 2);
+				this._currentIcon.y = this.paddingTop + (this.actualHeight - this.paddingTop - this.paddingBottom - this._currentIcon.height) / 2.0;
 			}
 		} else // top or bottom
 		{
-			if (this.horizontalAlign == HorizontalAlign.LEFT) {
-				this._currentIcon.x = paddingLeft;
-			} else if (this.horizontalAlign == HorizontalAlign.RIGHT) {
-				this._currentIcon.x = this.actualWidth - paddingRight - this._currentIcon.width;
+			if (this.horizontalAlign == LEFT) {
+				this._currentIcon.x = this.paddingLeft;
+			} else if (this.horizontalAlign == RIGHT) {
+				this._currentIcon.x = this.actualWidth - this.paddingRight - this._currentIcon.width;
 			} else {
-				this._currentIcon.x = paddingLeft + Math.round((this.actualWidth - paddingLeft - paddingRight - this._currentIcon.width) / 2);
+				this._currentIcon.x = this.paddingLeft + (this.actualWidth - this.paddingLeft - this.paddingRight - this._currentIcon.width) / 2.0;
 			}
 		}
 	}
@@ -879,6 +1019,9 @@ class ToggleButton extends BasicToggleButton {
 		if (result != null) {
 			return result;
 		}
+		if (!this.enabled && this.disabledIcon != null) {
+			return this.disabledIcon;
+		}
 		if (this.selected && this.selectedIcon != null) {
 			return this.selectedIcon;
 		}
@@ -892,10 +1035,21 @@ class ToggleButton extends BasicToggleButton {
 		if (Std.is(icon, IStateObserver)) {
 			cast(icon, IStateObserver).stateContext = null;
 		}
+		this._iconMeasurements.restore(icon);
 		if (icon.parent == this) {
 			// we need to restore these values so that they won't be lost the
 			// next time that this icon is used for measurement
 			this.removeChild(icon);
 		}
+	}
+
+	private function toggleButton_keyDownHandler(event:KeyboardEvent):Void {
+		if (!this.enabled || (this.buttonMode && this.focusRect == true)) {
+			return;
+		}
+		if (event.keyCode != Keyboard.SPACE && event.keyCode != Keyboard.ENTER) {
+			return;
+		}
+		this.dispatchEvent(new MouseEvent(MouseEvent.CLICK));
 	}
 }

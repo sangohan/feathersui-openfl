@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -10,14 +10,33 @@ package feathers.style;
 
 import openfl.display.DisplayObject;
 import openfl.display.DisplayObjectContainer;
+import feathers.themes.steel.DefaultSteelTheme;
 
 /**
-	Register themes globally in a Feathers application. May apply to the entire
-	application, or to the contents of a specific container.
+	Register themes globally in a Feathers UI application. May apply to the
+	entire application, or to the contents of a specific container.
 
 	@since 1.0.0
 **/
-class Theme {
+final class Theme {
+	/**
+		The fallback theme used when the primary theme does not provide styles
+		for a target object. Generally, this function is only used internally
+		by Feathers UI.
+
+		@since 1.0.0
+	**/
+	public static var fallbackTheme(get, null):ITheme;
+
+	private static function get_fallbackTheme():ITheme {
+		#if !disable_default_theme
+		if (fallbackTheme == null) {
+			fallbackTheme = new DefaultSteelTheme();
+		}
+		#end
+		return fallbackTheme;
+	}
+
 	private static var primaryTheme:ITheme;
 	private static var roots:Array<DisplayObjectContainer> = null;
 	private static var rootToTheme:Map<DisplayObjectContainer, ITheme>;
@@ -51,12 +70,13 @@ class Theme {
 	}
 
 	/**
-		Returns the theme that applies to a specific object. Generally, this
-		function is only used internally by Feathers.
+		Returns the theme that applies to a specific object, or the primary
+		theme, if no object is specified. Generally, this function is only used
+		internally by Feathers UI.
 
 		@since 1.0.0
 	**/
-	public static function getTheme(object:IStyleObject):ITheme {
+	public static function getTheme(?object:IStyleObject):ITheme {
 		if (roots != null && Std.is(object, DisplayObject)) {
 			var displayObject = cast(object, DisplayObject);
 			for (root in roots) {
@@ -65,6 +85,9 @@ class Theme {
 				}
 			}
 		}
-		return primaryTheme;
+		if (primaryTheme != null) {
+			return primaryTheme;
+		}
+		return fallbackTheme;
 	}
 }

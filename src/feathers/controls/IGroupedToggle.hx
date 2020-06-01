@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -19,6 +19,8 @@ import feathers.core.ToggleGroup;
 **/
 interface IGroupedToggle extends IToggle {
 	/**
+		The `ToggleGroup` that this toggle has been added to, or `null` if the
+		toggle has not been added to a group.
 
 		@since 1.0.0
 	**/

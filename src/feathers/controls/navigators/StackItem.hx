@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -14,9 +14,9 @@ import openfl.display.DisplayObject;
 
 /**
 	An individual item that will be displayed by a `StackNavigator` component.
-	Provides the view, an optional list of properties to set, and an optional
-	list of events to map to actions (like push, pop, and replace) on the
-	`StackNavigator`.
+	Provides the view, an optional function to set properties before the view is
+	displayed, and an optional list of events to map to actions (like push, pop,
+	and replace) on the `StackNavigator`.
 
 	The following example creates a new `StackItem` using the `SettingsView`
 	class to instantiate the view instance. This item is given am id of
@@ -28,15 +28,14 @@ import openfl.display.DisplayObject;
 	view.
 
 	```hx
-	var item = StackItem.withClass(SettingsScreen,
-		[
-			SettingsScreen.SHOW_ADVANCED_SETTINGS => StackActions.Push("advancedSettings"),
-			Event.COMPLETE => StackActions.Pop()
-		]);
-	navigator.addItem( "settings", item );
+	var item = StackItem.withClass("settings", SettingsScreen, [
+		SettingsScreen.SHOW_ADVANCED_SETTINGS => StackActions.Push("advancedSettings"),
+		Event.COMPLETE => StackActions.Pop()
+	]);
+	navigator.addItem("settings", item);
 	```
 
-	@see [How to use the Feathers `StackNavigator` component](../../../help/stack-navigator.html)
+	@see [Tutorial: How to use the StackNavigator component](https://feathersui.com/learn/haxe-openfl/stack-navigator/)
 	@see `feathers.controls.StackNavigator`
 
 	@since 1.0.0
@@ -46,10 +45,13 @@ class StackItem {
 		Creates a `StackItem` that instantiates a view from a class that extends
 		`DisplayObject` when the `StackNavigator` requests the item's view.
 	**/
-	public static function withClass(viewClass:Class<DisplayObject>, ?actions:Map<String, StackAction>):StackItem {
-		var item:StackItem = new StackItem();
+	public static function withClass(id:String, viewClass:Class<DisplayObject>, ?actions:Map<String, StackAction>,
+			?returnHandlers:Map<String, (Dynamic, Dynamic) -> Void>):StackItem {
+		var item = new StackItem();
+		item.id = id;
 		item.viewClass = viewClass;
 		item.actions = actions;
+		item.returnHandlers = returnHandlers;
 		return item;
 	}
 
@@ -57,10 +59,13 @@ class StackItem {
 		Creates a `StackItem` that calls a function that returns a
 		`DisplayObject` when the `StackNavigator` requests the item's view.
 	**/
-	public static function withFunction(viewFunction:Void->DisplayObject, ?actions:Map<String, StackAction>):StackItem {
-		var item:StackItem = new StackItem();
+	public static function withFunction(id:String, viewFunction:() -> DisplayObject, ?actions:Map<String, StackAction>,
+			?returnHandlers:Map<String, (Dynamic, Dynamic) -> Void>):StackItem {
+		var item = new StackItem();
+		item.id = id;
 		item.viewFunction = viewFunction;
 		item.actions = actions;
+		item.returnHandlers = returnHandlers;
 		return item;
 	}
 
@@ -68,19 +73,30 @@ class StackItem {
 		Creates a `StackItem` that always returns the same `DisplayObject`
 		instance when the `StackNavigator` requests the item's view.
 	**/
-	public static function withDisplayObject(viewInstance:DisplayObject, ?actions:Map<String, StackAction>):StackItem {
-		var item:StackItem = new StackItem();
+	public static function withDisplayObject(id:String, viewInstance:DisplayObject, ?actions:Map<String, StackAction>,
+			?returnHandlers:Map<String, (Dynamic, Dynamic) -> Void>):StackItem {
+		var item = new StackItem();
+		item.id = id;
 		item.viewInstance = viewInstance;
 		item.actions = actions;
+		item.returnHandlers = returnHandlers;
 		return item;
 	}
 
 	private function new() {}
 
+	/**
+		The unique ID associated with this item.
+
+		@since 1.0.0
+	**/
+	public var id:String;
+
 	private var viewClass:Class<DisplayObject>;
-	private var viewFunction:Void->DisplayObject;
+	private var viewFunction:() -> DisplayObject;
 	private var viewInstance:DisplayObject;
 	private var actions:Map<String, StackAction>;
+	private var returnHandlers:Map<String, (Dynamic, Dynamic) -> Void>;
 
 	/**
 		A custom "push" transition for this item only. If `null`, the default
@@ -101,7 +117,7 @@ class StackItem {
 		A custom transition function should have the following signature:
 
 		```hx
-		DisplayObject->DisplayObject->IEffectContext</pre>
+		(DisplayObject, DisplayObject) -> IEffectContext
 		```
 
 		Either of the arguments typed as `DisplayObject` may be `null`, but
@@ -113,12 +129,12 @@ class StackItem {
 		@default `null`
 
 		@see `feathers.controls.StackNavigator.pushTransition`
-		@see [Transitions for Feathers navigators](../../../help/transitions.html)
+		@see [Transitions for Feathers UI navigators](https://feathersui.com/learn/haxe-openfl/navigator-transitions/)
 
 		@since 1.0.0
 
 	**/
-	public var pushTransition:DisplayObject->DisplayObject->IEffectContext;
+	public var pushTransition:(DisplayObject, DisplayObject) -> IEffectContext;
 
 	/**
 		A custom "pop" transition for this item only. If `null`, the default
@@ -139,7 +155,7 @@ class StackItem {
 		A custom transition function should have the following signature:
 
 		```hx
-		DisplayObject->DisplayObject->IEffectContext</pre>
+		(DisplayObject, DisplayObject) -> IEffectContext
 		```
 
 		Either of the arguments typed as `DisplayObject` may be `null`, but
@@ -151,12 +167,12 @@ class StackItem {
 		@default `null`
 
 		@see `feathers.controls.StackNavigator.pushTransition`
-		@see [Transitions for Feathers navigators](../../../help/transitions.html)
+		@see [Transitions for Feathers UI navigators](https://feathersui.com/learn/haxe-openfl/navigator-transitions/)
 
 		@since 1.0.0
 
 	**/
-	public var popTransition:DisplayObject->DisplayObject->IEffectContext;
+	public var popTransition:(DisplayObject, DisplayObject) -> IEffectContext;
 
 	private var _viewToEvents:Map<DisplayObject, Array<ViewListener>> = [];
 
@@ -216,31 +232,31 @@ class StackItem {
 
 	private function performAction(action:StackAction, event:Event, navigator:StackNavigator):StackAction {
 		switch (action) {
-			case StackAction.Push(id, properties, transition):
+			case Push(id, inject, transition):
 				{
-					navigator.pushItem(id, properties, transition);
+					navigator.pushItem(id, inject, transition);
 				}
-			case StackAction.Replace(id, properties, transition):
+			case Replace(id, inject, transition):
 				{
-					navigator.replaceItem(id, properties, transition);
+					navigator.replaceItem(id, inject, transition);
 				}
-			case StackAction.Pop(transition):
+			case Pop(returnedObject, transition):
 				{
-					navigator.popItem(transition);
+					navigator.popItem(returnedObject, transition);
 				}
-			case StackAction.PopToRoot(transition):
+			case PopToRoot(returnedObject, transition):
 				{
-					navigator.popToRootItem(transition);
+					navigator.popToRootItem(returnedObject, transition);
 				}
-			case StackAction.PopToRootAndReplace(id, properties, transition):
+			case PopToRootAndReplace(id, inject, transition):
 				{
-					navigator.popToRootItemAndReplace(id, properties, transition);
+					navigator.popToRootItemAndReplace(id, inject, transition);
 				}
-			case StackAction.Listener(fn):
+			case Listener(fn):
 				{
 					fn(event);
 				}
-			case StackAction.NewAction(fn):
+			case NewAction(fn):
 				{
 					return fn(event);
 				}
@@ -248,7 +264,7 @@ class StackItem {
 		return null;
 	}
 
-	private function createActionEventListener(action:StackAction, navigator:StackNavigator):Event->Void {
+	private function createActionEventListener(action:StackAction, navigator:StackNavigator):(Event) -> Void {
 		var eventListener = function(event:Event):Void {
 			var current = action;
 			while (current != null) {
@@ -266,11 +282,11 @@ class StackItem {
 }
 
 private class ViewListener {
-	public function new(eventType:String, listener:Event->Void) {
+	public function new(eventType:String, listener:(Event) -> Void) {
 		this.eventType = eventType;
 		this.listener = listener;
 	}
 
 	public var eventType:String;
-	public var listener:Event->Void;
+	public var listener:(Event) -> Void;
 }

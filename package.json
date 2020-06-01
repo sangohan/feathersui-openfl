@@ -1,0 +1,48 @@
+{
+  "name": "feathersui-openfl",
+  "version": "1.0.0-alpha.2",
+  "description": "Feathers UI is a cross-platform framework of user interface components for creative frontend projects. It is especially well-suited for games, interactive data visualizations, and other rich, multimedia experiences. With Feathers UI, you can create native apps for a wide range of devices and platforms — including phones, tablets, desktop computers, game consoles… and you can even deploy to web browsers.",
+  "repository": "https://github.com/BowlerHatLLC/feathersui-openfl.git",
+  "keywords": [
+    "OpenFL",
+    "Flash",
+    "Haxe"
+  ],
+  "author": "Josh Tynjala",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/BowlerHatLLC/feathersui-openfl/issues"
+  },
+  "homepage": "https://feathersui.com/",
+  "main": "dist/feathersui-openfl.min.js",
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "actuate": "^1.8.9-beta",
+    "openfl": "^8.9.6"
+  },
+  "devDependencies": {
+    "brotli-webpack-plugin": "^1.1.0",
+    "compression-webpack-plugin": "^3.1.0",
+    "globby": "^11.0.0",
+    "haxe": "^5.2.1",
+    "hxgenjs": "kevinresol/hxgenjs",
+    "lime": "openfl/lime#develop",
+    "webpack": "^4.43.0",
+    "webpack-cli": "^3.3.11",
+    "webpack-merge": "^4.2.2"
+  },
+  "haxeDependencies": {
+    "haxe": "4.0.0"
+  },
+  "scripts": {
+    "build": "npm run build-lib && npm run gen-lib && npm run build-dist",
+    "gen-lib": "cd npm-scripts && node generate-modules gen-lib",
+    "build-lib": "cd npm-scripts && haxe js-lib.hxml && node generate-modules fix-npm-libs",
+    "build-lib-esm": "cd npm-scripts && node generate-modules gen-esm",
+    "build-dist": "npm run build-dist:dev && npm run build-dist:prod",
+    "build-dist:dev": "webpack --config webpack.dev.js",
+    "build-dist:prod": "webpack --config webpack.prod.js"
+  }
+}

@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -10,8 +10,10 @@ package feathers.controls;
 
 import feathers.controls.supportClasses.BaseSlider;
 import feathers.core.IValidating;
-import feathers.style.IStyleObject;
+import feathers.themes.steel.components.SteelHSliderStyles;
+import openfl.events.KeyboardEvent;
 import openfl.geom.Point;
+import openfl.ui.Keyboard;
 
 /**
 
@@ -22,27 +24,37 @@ import openfl.geom.Point;
 	changes:
 
 	```hx
-	var slider:HSlider = new HSlider();
-	slider.minimum = 0;
-	slider.maximum = 100;
-	slider.step = 1;
-	slider.value = 12;
-	slider.addEventListener( Event.CHANGE, slider_changeHandler );
-	this.addChild( slider );</listing>
+	var slider = new HSlider();
+	slider.minimum = 0.0;
+	slider.maximum = 100.0;
+	slider.step = 1.0;
+	slider.value = 12.0;
+	slider.addEventListener(Event.CHANGE, slider_changeHandler);
+	this.addChild(slider);
 	```
 
+	@see [Tutorial: How to use the HSlider and VSlider components](https://feathersui.com/learn/haxe-openfl/slider/)
 	@see `feathers.controls.VSlider`
-	@see [How to use the Feathers `HSlider` and `VSlider` components](../../../help/slider.html)
 
 	@since 1.0.0
 **/
+@:styleContext
 class HSlider extends BaseSlider {
+	/**
+		Creates a new `HSlider` object.
+
+		@since 1.0.0
+	**/
 	public function new() {
+		initializeHSliderTheme();
+
 		super();
+
+		this.addEventListener(KeyboardEvent.KEY_DOWN, hSlider_keyDownHandler);
 	}
 
-	override private function get_styleContext():Class<IStyleObject> {
-		return HSlider;
+	private function initializeHSliderTheme():Void {
+		SteelHSliderStyles.initialize();
 	}
 
 	override private function valueToLocation(value:Float):Float {
@@ -62,7 +74,19 @@ class HSlider extends BaseSlider {
 		return Math.round(this.minimumPadding + (trackScrollableWidth * normalized));
 	}
 
-	override private function autoSizeIfNeeded():Bool {
+	override private function locationToValue(x:Float, y:Float):Float {
+		var percentage = 0.0;
+		var trackScrollableWidth = this.actualWidth - this.minimumPadding - this.maximumPadding;
+		if (this.thumbSkin != null) {
+			trackScrollableWidth -= this.thumbSkin.width;
+		}
+		var xOffset = x - this._pointerStartX - this.minimumPadding;
+		var xPosition = Math.min(Math.max(0.0, this._thumbStartX + xOffset), trackScrollableWidth);
+		percentage = xPosition / trackScrollableWidth;
+		return this.minimum + percentage * (this.maximum - this.minimum);
+	}
+
+	override private function measure():Bool {
 		var needsWidth = this.explicitWidth == null;
 		var needsHeight = this.explicitHeight == null;
 		var needsMinWidth = this.explicitMinWidth == null;
@@ -120,24 +144,12 @@ class HSlider extends BaseSlider {
 		return this.saveMeasurements(newWidth, newHeight, newMinWidth, newMinHeight, newMaxWidth, newMaxHeight);
 	}
 
-	override private function locationToValue(x:Float, y:Float):Float {
-		var percentage = 0.0;
-		var trackScrollableWidth = this.actualWidth - this.minimumPadding - this.maximumPadding;
-		if (this.thumbSkin != null) {
-			trackScrollableWidth -= this.thumbSkin.width;
-		}
-		var xOffset = x - this._pointerStartX - this.minimumPadding;
-		var xPosition = Math.min(Math.max(0, this._thumbStartX + xOffset), trackScrollableWidth);
-		percentage = xPosition / trackScrollableWidth;
-		return this.minimum + percentage * (this.maximum - this.minimum);
-	}
-
 	override private function saveThumbStart(location:Point):Void {
 		var trackWidthMinusThumbWidth = this.actualWidth;
 		var locationMinusHalfThumbWidth = location.x;
 		if (this.thumbSkin != null) {
 			trackWidthMinusThumbWidth -= this.thumbSkin.width;
-			locationMinusHalfThumbWidth -= this.thumbSkin.width / 2;
+			locationMinusHalfThumbWidth -= this.thumbSkin.width / 2.0;
 		}
 		this._thumbStartX = Math.min(trackWidthMinusThumbWidth - this.maximumPadding, Math.max(this.minimumPadding, locationMinusHalfThumbWidth));
 		this._thumbStartY = location.y;
@@ -149,10 +161,10 @@ class HSlider extends BaseSlider {
 			if (Std.is(this.thumbSkin, IValidating)) {
 				cast(this.thumbSkin, IValidating).validateNow();
 			}
-			location += Math.round(this.thumbSkin.width / 2);
+			location += Math.round(this.thumbSkin.width / 2.0);
 		}
 
-		this.trackSkin.x = 0;
+		this.trackSkin.x = 0.0;
 		this.trackSkin.width = location;
 
 		this.secondaryTrackSkin.x = location;
@@ -165,22 +177,22 @@ class HSlider extends BaseSlider {
 			cast(this.secondaryTrackSkin, IValidating).validateNow();
 		}
 
-		this.trackSkin.y = (this.actualHeight - this.trackSkin.height) / 2;
-		this.secondaryTrackSkin.y = (this.actualHeight - this.secondaryTrackSkin.height) / 2;
+		this.trackSkin.y = (this.actualHeight - this.trackSkin.height) / 2.0;
+		this.secondaryTrackSkin.y = (this.actualHeight - this.secondaryTrackSkin.height) / 2.0;
 	}
 
 	override private function layoutSingleTrack():Void {
 		if (this.trackSkin == null) {
 			return;
 		}
-		this.trackSkin.x = 0;
+		this.trackSkin.x = 0.0;
 		this.trackSkin.width = this.actualWidth;
 
 		if (Std.is(this.trackSkin, IValidating)) {
 			cast(this.trackSkin, IValidating).validateNow();
 		}
 
-		this.trackSkin.y = (this.actualHeight - this.trackSkin.height) / 2;
+		this.trackSkin.y = (this.actualHeight - this.trackSkin.height) / 2.0;
 	}
 
 	override private function layoutThumb():Void {
@@ -189,6 +201,24 @@ class HSlider extends BaseSlider {
 		}
 		var thumbLocation = this.valueToLocation(this.value);
 		this.thumbSkin.x = thumbLocation;
-		this.thumbSkin.y = Math.round((this.actualHeight - this.thumbSkin.height) / 2);
+		this.thumbSkin.y = Math.round((this.actualHeight - this.thumbSkin.height) / 2.0);
+	}
+
+	private function hSlider_keyDownHandler(event:KeyboardEvent):Void {
+		var newValue = this.value;
+		switch (event.keyCode) {
+			case Keyboard.LEFT:
+				newValue -= this.step;
+			case Keyboard.RIGHT:
+				newValue += this.step;
+			case Keyboard.HOME:
+				newValue = this.minimum;
+			case Keyboard.END:
+				newValue = this.maximum;
+			default:
+				return;
+		}
+		event.stopPropagation();
+		this.value = newValue;
 	}
 }

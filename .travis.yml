@@ -1,0 +1,83 @@
+language: haxe
+haxe:
+- 4.0.0
+#- 4.1.0
+services:
+- xvfb
+addons: 
+env:
+  global:
+  - NEKOPATH=/usr/local/lib/neko:$TRAVIS_BUILD_DIR/test/build/neko/bin
+stages:
+- name: after_success
+  if: branch = master AND env(TRAVIS_SECURE_ENV_VARS) = true
+install:
+- haxelib install lime --quiet
+- haxelib install openfl --quiet
+- haxelib install actuate --quiet
+- haxelib install dox --quiet
+- haxelib install munit --quiet
+- haxelib dev feathersui . --quiet
+- npm ci
+script:
+# build js library
+- npm run build
+# build swc library
+- haxelib run openfl build flash
+# build documentation
+- cd $TRAVIS_BUILD_DIR/docs
+- haxe docs.hxml
+# build hello-world sample
+- cd $TRAVIS_BUILD_DIR/samples/hello-world
+- haxelib run openfl build neko
+- haxelib run openfl build html5
+- haxelib run openfl build flash
+# build calculator sample
+- cd $TRAVIS_BUILD_DIR/samples/calculator
+- haxelib run openfl build neko
+- haxelib run openfl build html5
+- haxelib run openfl build flash
+# build components-explorer sample
+- cd $TRAVIS_BUILD_DIR/samples/components-explorer
+- haxelib run openfl build neko
+- haxelib run openfl build html5
+- haxelib run openfl build flash
+# build custom-theme sample
+- cd $TRAVIS_BUILD_DIR/samples/custom-theme
+- haxelib run openfl build neko
+- haxelib run openfl build html5
+- haxelib run openfl build flash
+# build horizontal-layout-percentage-sizing sample
+- cd $TRAVIS_BUILD_DIR/samples/horizontal-layout-percentage-sizing
+- haxelib run openfl build neko
+- haxelib run openfl build html5
+- haxelib run openfl build flash
+# build list-view-data-provider-collection-sorting sample
+- cd $TRAVIS_BUILD_DIR/samples/list-view-data-provider-collection-sorting
+- haxelib run openfl build neko
+- haxelib run openfl build html5
+- haxelib run openfl build flash
+# build login-form sample
+- cd $TRAVIS_BUILD_DIR/samples/login-form
+- haxelib run openfl build neko
+- haxelib run openfl build html5
+- haxelib run openfl build flash
+# build stack-navigator-pass-data-between-views sample
+- cd $TRAVIS_BUILD_DIR/samples/stack-navigator-pass-data-between-views
+- haxelib run openfl build neko
+- haxelib run openfl build html5
+- haxelib run openfl build flash
+# build tab-navigator sample
+- cd $TRAVIS_BUILD_DIR/samples/tab-navigator
+- haxelib run openfl build neko
+- haxelib run openfl build html5
+- haxelib run openfl build flash
+# run automated tests
+- cd $TRAVIS_BUILD_DIR/test
+- haxelib run munit test -neko -result-exit-code
+after_success:
+- ssh-keyscan -H feathersui.com >> ~/.ssh/known_hosts
+- echo "${SFTP_KEY}" | base64 --decode >/tmp/sftp_rsa
+- chmod 600 /tmp/sftp_rsa
+- mv $TRAVIS_BUILD_DIR/build/api $TRAVIS_BUILD_DIR/build/unstable
+- scp -i /tmp/sftp_rsa -r $TRAVIS_BUILD_DIR/build/unstable dh_feathers@feathersui.com:~/api.feathersui.com

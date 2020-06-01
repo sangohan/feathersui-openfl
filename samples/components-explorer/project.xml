@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<project>
+	
+	<meta title="Feathers UI" package="com.feathersui.samples.Components" version="1.0.0" company="Bowler Hat LLC" />
+	<meta title="Components Explorer — Feathers UI Samples" if="html5"/>
+	<app main="Main" path="build" file="Components" />
+
+	<!-- needed on Android to avoid hiding the back/home buttons -->
+	<window fullscreen="false" if="android"/>
+	<window allow-high-dpi="true"/>
+	<window fps="60"/>
+	<window fps="0" if="html5"/>
+	
+	<source path="../../src" />
+	<source path="src" />
+	
+	<haxelib name="openfl" />
+	<haxelib name="actuate" />
+
+	<haxdef name="openfl_pool_events"/>	
+
+	<!-- sync/embedded -->
+	<assets id="haxe" path="assets/img/haxe.png"/>
+	<assets id="favicon" path="assets/img/favicon.png"/>
+
+	<!-- async/external -->
+	<assets id="openfl" path="assets/img/openfl.png" embed="false"/>
+
+	<icon path="assets/icons/feathersui-icon.svg"/>
+</project>

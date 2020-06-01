@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -8,18 +8,23 @@
 
 package feathers.controls;
 
-import openfl.display.DisplayObject;
-import openfl.events.MouseEvent;
+import feathers.utils.KeyToState;
 import feathers.core.FeathersControl;
 import feathers.core.IMeasureObject;
-import feathers.core.IUIControl;
-import feathers.core.InvalidationFlag;
 import feathers.core.IStateContext;
 import feathers.core.IStateObserver;
+import feathers.core.IUIControl;
 import feathers.core.IValidating;
+import feathers.core.InvalidationFlag;
 import feathers.events.FeathersEvent;
 import feathers.layout.Measurements;
+import feathers.utils.MeasurementsUtil;
 import feathers.utils.PointerToState;
+import feathers.utils.PointerTrigger;
+import openfl.display.DisplayObject;
+import openfl.events.KeyboardEvent;
+import openfl.events.MouseEvent;
+import openfl.ui.Keyboard;
 
 /**
 	A simple button control with states, but no content, that is useful for
@@ -30,7 +35,12 @@ import feathers.utils.PointerToState;
 
 	@see `feathers.controls.Button`
 **/
-class BasicButton extends FeathersControl implements IStateContext {
+class BasicButton extends FeathersControl implements IStateContext<ButtonState> {
+	/**
+		Creates a new `BasicButton` object.
+
+		@since 1.0.0
+	**/
 	public function new() {
 		super();
 		// MouseEvent.CLICK is dispatched only if the same object is under the
@@ -50,54 +60,64 @@ class BasicButton extends FeathersControl implements IStateContext {
 	/**
 		The current state of the button.
 
+		When the value of the `currentState` property changes, the button will
+		dispatch an event of type `FeathersEvent.STATE_CHANGE`.
+
 		@see `feathers.controls.ButtonState`
-		@see `FeathersEvent.STATE_CHANGE`
+		@see `feathers.events.FeathersEvent.STATE_CHANGE`
 
 		@since 1.0.0
 	**/
-	public var currentState(get, null):String;
+	public var currentState(get, null):ButtonState = UP;
 
-	private function get_currentState():String {
+	private function get_currentState():ButtonState {
 		return this.currentState;
 	}
 
 	override private function set_enabled(value:Bool):Bool {
 		super.enabled = value;
 		if (this.enabled) {
-			if (this.currentState == ButtonState.DISABLED) {
-				this.changeState(ButtonState.UP);
+			if (this.currentState == DISABLED) {
+				this.changeState(UP);
 			}
 		} else {
-			this.changeState(ButtonState.DISABLED);
+			this.changeState(DISABLED);
 		}
 		return this.enabled;
 	}
 
-	private var _pointerToState:PointerToState = null;
+	private var _pointerToState:PointerToState<ButtonState> = null;
+	private var _keyToState:KeyToState<ButtonState> = null;
+	private var _pointerTrigger:PointerTrigger = null;
 	private var _backgroundSkinMeasurements:Measurements = null;
 	private var _currentBackgroundSkin:DisplayObject = null;
 
-	@style
-	public var keepDownStateOnRollOut(default, set):Bool = false;
+	/**
+		Determines if a pressed button should remain in the down state if the
+		pointer moves outside of the button's bounds. Useful for controls like
+		`HSlider`, `VSlider`, or `ToggleSwitch` to keep a thumb in the down
+		state while it is being dragged around by the pointer.
 
-	private function set_keepDownStateOnRollOut(value:Bool):Bool {
-		if (!this.setStyle("keepDownStateOnRollOut")) {
-			return this.keepDownStateOnRollOut;
-		}
-		if (this.keepDownStateOnRollOut == value) {
-			return this.keepDownStateOnRollOut;
-		}
-		this.keepDownStateOnRollOut = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.keepDownStateOnRollOut;
-	}
+		The following example ensures that the button's down state remains
+		active on roll out.
+
+		```hx
+		button.keepDownStateOnRollOut = true;
+		```
+
+		@since 1.0.0
+	**/
+	@:style
+	public var keepDownStateOnRollOut:Bool = false;
 
 	/**
-		The default background skin for the button, which is used when no other
-		skin is defined for the current state with `setSkinForState()`.
+		The display object to use as the background skin for the button.
 
-		The following example gives the button a default skin to use for all
-		states when no specific skin is available:
+		To render a different background skin, depending on the button's current
+		state, pass additional skins to `setSkinForState()`.
+
+		The following example passes a bitmap for the button to use as a
+		background skin:
 
 		```hx
 		button.backgroundSkin = new Bitmap(bitmapData);
@@ -110,26 +130,10 @@ class BasicButton extends FeathersControl implements IStateContext {
 
 		@since 1.0.0
 	**/
-	@style
-	public var backgroundSkin(default, set):DisplayObject = null;
+	@:style
+	public var backgroundSkin:DisplayObject = null;
 
-	private function set_backgroundSkin(value:DisplayObject):DisplayObject {
-		if (!this.setStyle("backgroundSkin")) {
-			return this.backgroundSkin;
-		}
-		if (this.backgroundSkin == value) {
-			return this.backgroundSkin;
-		}
-		if (this.backgroundSkin != null && this.backgroundSkin == this._currentBackgroundSkin) {
-			this.removeCurrentBackgroundSkin(this.backgroundSkin);
-			this._currentBackgroundSkin = null;
-		}
-		this.backgroundSkin = value;
-		this.setInvalid(InvalidationFlag.STYLES);
-		return this.backgroundSkin;
-	}
-
-	private var _stateToSkin:Map<String, DisplayObject> = new Map();
+	private var _stateToSkin:Map<ButtonState, DisplayObject> = new Map();
 
 	/**
 		Gets the skin to be used by the button when its `currentState` property
@@ -137,10 +141,10 @@ class BasicButton extends FeathersControl implements IStateContext {
 
 		If a skin is not defined for a specific state, returns `null`.
 
-		@see `feathers.controls.ButtonState`
-		@see `BasicButton.backgroundSkin`
 		@see `BasicButton.setSkinForState()`
+		@see `BasicButton.backgroundSkin`
 		@see `BasicButton.currentState`
+		@see `feathers.controls.ButtonState`
 
 		@since 1.0.0
 	**/
@@ -155,10 +159,10 @@ class BasicButton extends FeathersControl implements IStateContext {
 		If a skin is not defined for a specific state, the value of the
 		`backgroundSkin` property will be used instead.
 
-		@see `feathers.controls.ButtonState`
-		@see `BasicButton.backgroundSkin`
 		@see `BasicButton.getSkinForState()`
+		@see `BasicButton.backgroundSkin`
 		@see `BasicButton.currentState`
+		@see `feathers.controls.ButtonState`
 
 		@since 1.0.0
 	**/
@@ -184,7 +188,15 @@ class BasicButton extends FeathersControl implements IStateContext {
 		super.initialize();
 
 		if (this._pointerToState == null) {
-			this._pointerToState = new PointerToState(this, this.changeState);
+			this._pointerToState = new PointerToState(this, this.changeState, UP, DOWN, HOVER);
+		}
+
+		if (this._keyToState == null) {
+			this._keyToState = new KeyToState(this, this.changeState, UP, DOWN);
+		}
+
+		if (this._pointerTrigger == null) {
+			this._pointerTrigger = new PointerTrigger(this);
 		}
 	}
 
@@ -200,7 +212,7 @@ class BasicButton extends FeathersControl implements IStateContext {
 			this.refreshInteractivity();
 		}
 
-		this.autoSizeIfNeeded();
+		this.measure();
 		this.layoutBackgroundSkin();
 	}
 
@@ -248,6 +260,7 @@ class BasicButton extends FeathersControl implements IStateContext {
 		if (Std.is(skin, IStateObserver)) {
 			cast(skin, IStateObserver).stateContext = null;
 		}
+		this._backgroundSkinMeasurements.restore(skin);
 		if (skin.parent == this) {
 			// we need to restore these values so that they won't be lost the
 			// next time that this skin is used for measurement
@@ -255,31 +268,7 @@ class BasicButton extends FeathersControl implements IStateContext {
 		}
 	}
 
-	/**
-		If the component's dimensions have not been set explicitly, it will
-		measure its content and determine an ideal size for itself. For
-		instance, if the `explicitWidth` property is set, that value will be
-		used without additional measurement. If `explicitWidth` is set, but
-		`explicitHeight` is not (or the other way around), the dimension with
-		the explicit value will not be measured, but the other non-explicit
-		dimension will still require measurement.
-
-		Calls `saveMeasurements()` to set up the `actualWidth` and
-		`actualHeight` member variables used for layout.
-
-		Meant for internal use, and subclasses may override this function with a
-		custom implementation.
-
-		@see `FeathersControl.saveMeasurements()`
-		@see `FeathersControl.explicitWidth`
-		@see `FeathersControl.explicitHeight`
-		@see `FeathersControl.actualWidth`
-		@see `FeathersControl.actualHeight`
-
-		@since 1.0.0
-	**/
-	@:dox(show)
-	private function autoSizeIfNeeded():Bool {
+	private function measure():Bool {
 		var needsWidth = this.explicitWidth == null;
 		var needsHeight = this.explicitHeight == null;
 		var needsMinWidth = this.explicitMinWidth == null;
@@ -291,7 +280,7 @@ class BasicButton extends FeathersControl implements IStateContext {
 		}
 
 		if (this._currentBackgroundSkin != null) {
-			this._backgroundSkinMeasurements.resetTargetFluidlyForParent(this._currentBackgroundSkin, this);
+			MeasurementsUtil.resetFluidlyWithParent(this._backgroundSkinMeasurements, this._currentBackgroundSkin, this);
 		}
 
 		var measureSkin:IMeasureObject = null;
@@ -308,7 +297,7 @@ class BasicButton extends FeathersControl implements IStateContext {
 			if (this._currentBackgroundSkin != null) {
 				newWidth = this._currentBackgroundSkin.width;
 			} else {
-				newWidth = 0;
+				newWidth = 0.0;
 			}
 		}
 
@@ -317,7 +306,7 @@ class BasicButton extends FeathersControl implements IStateContext {
 			if (this._currentBackgroundSkin != null) {
 				newHeight = this._currentBackgroundSkin.height;
 			} else {
-				newHeight = 0;
+				newHeight = 0.0;
 			}
 		}
 
@@ -328,7 +317,7 @@ class BasicButton extends FeathersControl implements IStateContext {
 			} else if (this._backgroundSkinMeasurements != null) {
 				newMinWidth = this._backgroundSkinMeasurements.minWidth;
 			} else {
-				newMinWidth = 0;
+				newMinWidth = 0.0;
 			}
 		}
 
@@ -339,7 +328,7 @@ class BasicButton extends FeathersControl implements IStateContext {
 			} else if (this._backgroundSkinMeasurements != null) {
 				newMinHeight = this._backgroundSkinMeasurements.minHeight;
 			} else {
-				newMinHeight = 0;
+				newMinHeight = 0.0;
 			}
 		}
 		var newMaxWidth = this.explicitMaxWidth;
@@ -371,8 +360,8 @@ class BasicButton extends FeathersControl implements IStateContext {
 		if (this._currentBackgroundSkin == null) {
 			return;
 		}
-		this._currentBackgroundSkin.x = 0;
-		this._currentBackgroundSkin.y = 0;
+		this._currentBackgroundSkin.x = 0.0;
+		this._currentBackgroundSkin.y = 0.0;
 
 		// don't set the width or height explicitly unless necessary because if
 		// our explicit dimensions are cleared later, the measurement may not be
@@ -388,9 +377,9 @@ class BasicButton extends FeathersControl implements IStateContext {
 		}
 	}
 
-	private function changeState(state:String):Void {
+	private function changeState(state:ButtonState):Void {
 		if (!this.enabled) {
-			state = ButtonState.DISABLED;
+			state = DISABLED;
 		}
 		if (this.currentState == state) {
 			return;

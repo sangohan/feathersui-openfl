@@ -1,6 +1,6 @@
 /*
-	Feathers
-	Copyright 2019 Bowler Hat LLC. All Rights Reserved.
+	Feathers UI
+	Copyright 2020 Bowler Hat LLC. All Rights Reserved.
 
 	This program is free software. You can redistribute and/or modify it in
 	accordance with the terms of the accompanying license agreement.
@@ -24,8 +24,8 @@ import feathers.graphics.FillStyle;
 import feathers.graphics.LineStyle;
 
 /**
-	A base class for Feathers skins that draw a path with a fill and border
-	using `openfl.display.Graphics`.
+	A base class for Feathers UI skins that draw a path with a fill and border
+	using [`openfl.display.Graphics`](https://api.openfl.org/openfl/display/Graphics.html).
 
 	@since 1.0.0
 **/
@@ -37,9 +37,18 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 		this.tabChildren = false;
 	}
 
-	public var stateContext(default, set):IStateContext;
+	private var _previousBorder:LineStyle = null;
+	private var _previousFill:FillStyle = null;
 
-	private function set_stateContext(value:IStateContext):IStateContext {
+	/**
+		An optional `IStateContext` that is used to change the styles of the
+		skin when its state changes.
+
+		@since 1.0.0
+	**/
+	public var stateContext(default, set):IStateContext<Dynamic>;
+
+	private function set_stateContext(value:IStateContext<Dynamic>):IStateContext<Dynamic> {
 		if (this.stateContext == value) {
 			return this.stateContext;
 		}
@@ -60,7 +69,7 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 		return this.stateContext;
 	}
 
-	private var _stateToFill:Map<String, FillStyle>;
+	private var _stateToFill:Map<EnumValue, FillStyle>;
 
 	/**
 		How the path's fill is styled. For example, it could be a solid color,
@@ -68,7 +77,7 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 
 		@since 1.0.0
 	**/
-	public var fill(default, set):FillStyle = FillStyle.SolidColor(0xcccccc);
+	public var fill(default, set):FillStyle = SolidColor(0xcccccc);
 
 	private function set_fill(value:FillStyle):FillStyle {
 		if (this.fill == value) {
@@ -84,7 +93,7 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 		use this skin, the state context must implement the `IUIControl`
 		interface.
 
-		@see `feathers.core.IUIControl`
+		@see `feathers.core.IUIControl.enabled`
 
 		@since 1.0.0
 	**/
@@ -103,7 +112,7 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 		How the path's fill is styled when the state context is selected. To
 		use this skin, the state context must implement the `IToggle` interface.
 
-		@see `feathers.controls.IToggle`
+		@see `feathers.controls.IToggle.selected`
 
 		@since 1.0.0
 	**/
@@ -118,7 +127,7 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 		return this.selectedFill;
 	}
 
-	private var _stateToBorder:Map<String, LineStyle>;
+	private var _stateToBorder:Map<EnumValue, LineStyle>;
 
 	/**
 		How the path's border is styled.
@@ -141,7 +150,7 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 		use this skin, the state context must implement the `IUIControl`
 		interface.
 
-		@see `feathers.core.IUIControl`
+		@see `feathers.core.IUIControl.enabled`
 
 		@since 1.0.0
 	**/
@@ -160,7 +169,7 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 		How the path's border is styled when the state context is selected. To
 		use this skin, the state context must implement the `IToggle` interface.
 
-		@see `feathers.controls.IToggle`
+		@see `feathers.controls.IToggle.selected`
 
 		@since 1.0.0
 	**/
@@ -181,12 +190,13 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 
 		If a fill is not defined for a specific state, returns `null`.
 
-		@see `fill`
-		@see `setFillForState()`
+		@see `BaseGraphicsPathSkin.stateContext`
+		@see `BaseGraphicsPathSkin.fill`
+		@see `BaseGraphicsPathSkin.setFillForState`
 
 		@since 1.0.0
 	**/
-	public function getFillForState(state:String):FillStyle {
+	public function getFillForState(state:EnumValue):FillStyle {
 		if (this._stateToFill == null) {
 			return null;
 		}
@@ -202,12 +212,13 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 
 		To clear a state's fill, pass in `null`.
 
-		@see `fill`
-		@see `getFillForState()`
+		@see `BaseGraphicsPathSkin.stateContext`
+		@see `BaseGraphicsPathSkin.fill`
+		@see `BaseGraphicsPathSkin.getFillForState`
 
 		@since 1.0.0
 	**/
-	public function setFillForState(state:String, fill:FillStyle):Void {
+	public function setFillForState(state:EnumValue, fill:FillStyle):Void {
 		if (this._stateToFill == null) {
 			this._stateToFill = [];
 		}
@@ -224,12 +235,13 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 
 		If a border is not defined for a specific state, returns `null`.
 
-		@see `border`
-		@see `setBorderForState()`
+		@see `BaseGraphicsPathSkin.stateContext`
+		@see `BaseGraphicsPathSkin.border`
+		@see `BaseGraphicsPathSkin.setBorderForState`
 
 		@since 1.0.0
 	**/
-	public function getBorderForState(state:String):LineStyle {
+	public function getBorderForState(state:EnumValue):LineStyle {
 		if (this._stateToBorder == null) {
 			return null;
 		}
@@ -245,12 +257,13 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 
 		To clear a state's border, pass in `null`.
 
-		@see `border`
-		@see `getBorderForState()`
+		@see `BaseGraphicsPathSkin.stateContext`
+		@see `BaseGraphicsPathSkin.border`
+		@see `BaseGraphicsPathSkin.getBorderForState`
 
 		@since 1.0.0
 	**/
-	public function setBorderForState(state:String, border:LineStyle):Void {
+	public function setBorderForState(state:EnumValue, border:LineStyle):Void {
 		if (this._stateToBorder == null) {
 			this._stateToBorder = [];
 		}
@@ -262,6 +275,8 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 	}
 
 	override private function update():Void {
+		this._previousBorder = this.getCurrentBorder();
+		this._previousFill = this.getCurrentFill();
 		this.graphics.clear();
 		this.draw();
 	}
@@ -276,6 +291,12 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 		}
 	}
 
+	/**
+		Subclasses should override `drawPath()` to draw the skin's graphics.
+
+		@since 1.0.0
+	**/
+	@:dox(show)
 	private function drawPath():Void {}
 
 	private function applyLineStyle(lineStyle:LineStyle):Void {
@@ -393,7 +414,25 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 		return matrix;
 	}
 
+	/**
+		Returns the current border based on the state context.
+
+		@see `BaseGraphicsPathSkin.border`
+		@see `BaseGraphicsPathSkin.getBorderForState`
+		@see `BaseGraphicsPathSkin.setBorderForState`
+		@see `BaseGraphicsPathSkin.stateContext`
+
+		@since 1.0.0
+	**/
+	@:dox(show)
 	private function getCurrentBorder():LineStyle {
+		if (this._previousBorder != null) {
+			return this._previousBorder;
+		}
+		return getCurrentBorderWithoutCache();
+	}
+
+	private function getCurrentBorderWithoutCache():LineStyle {
 		if (this.stateContext == null) {
 			return this.border;
 		}
@@ -418,7 +457,25 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 		return this.border;
 	}
 
+	/**
+		Returns the current fill based on the state context.
+
+		@see `BaseGraphicsPathSkin.fill`
+		@see `BaseGraphicsPathSkin.getFillForState`
+		@see `BaseGraphicsPathSkin.setFillForState`
+		@see `BaseGraphicsPathSkin.stateContext`
+
+		@since 1.0.0
+	**/
+	@:dox(show)
 	private function getCurrentFill():FillStyle {
+		if (this._previousFill != null) {
+			return this._previousFill;
+		}
+		return getCurrentFillWithoutCache();
+	}
+
+	private function getCurrentFillWithoutCache() {
 		if (this.stateContext == null) {
 			return this.fill;
 		}
@@ -443,11 +500,41 @@ class BaseGraphicsPathSkin extends MeasureSprite implements IStateObserver {
 		return this.fill;
 	}
 
-	private function stateContext_stateChangeHandler(event:FeathersEvent):Void {
+	/**
+		Checks if a the current state requires the skin to be redrawn.
+
+		Subclasses may need to override this method if they add any additional
+		state-dependent properties similar to `getCurrentBorder` and
+		`getCurrentFill`.
+
+		@since 1.0.0
+	**/
+	@:dox(show)
+	private function needsStateUpdate():Bool {
+		var updated = false;
+		if (this._previousBorder != getCurrentBorderWithoutCache()) {
+			this._previousBorder = null;
+			updated = true;
+		}
+		if (this._previousFill != getCurrentFillWithoutCache()) {
+			this._previousFill = null;
+			updated = true;
+		}
+		return updated;
+	}
+
+	private function checkForStateChange():Void {
+		if (!this.needsStateUpdate()) {
+			return;
+		}
 		this.setInvalid(InvalidationFlag.STATE);
 	}
 
+	private function stateContext_stateChangeHandler(event:FeathersEvent):Void {
+		this.checkForStateChange();
+	}
+
 	private function stateContextToggle_changeHandler(event:Event):Void {
-		this.setInvalid(InvalidationFlag.STATE);
+		this.checkForStateChange();
 	}
 }
